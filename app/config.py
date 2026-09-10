@@ -19,5 +19,11 @@ class Settings(BaseModel):
     MODEL_VERSION: str = Field(
         default_factory=lambda: os.getenv("MODEL_VERSION", "v0.1.0-scaffold")
     )
+    OPENWEATHER_API_KEY: str | None = Field(
+        default_factory=lambda: os.getenv("OPENWEATHER_API_KEY")
+    )
+    GEMINI_API_KEY: str | None = Field(
+        default_factory=lambda: os.getenv("GEMINI_API_KEY")
+    )
 
 settings = Settings()

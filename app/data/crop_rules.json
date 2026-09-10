@@ -1,0 +1,38 @@
+[
+  {
+    "conditions": {
+      "weather_main": "Clear",
+      "temp_min_celsius": 24,
+      "soil": "Sandy Loam"
+    },
+    "crop": "Cotton (કપાસ)",
+    "advice": "Perfect for sunny days in Ahmedabad. Ensure consistent watering as sandy loam soil drains quickly."
+  },
+  {
+    "conditions": {
+      "weather_main": "Rain",
+      "temp_min_celsius": 22,
+      "soil": "Clay"
+    },
+    "crop": "Rice (ચોખા)",
+    "advice": "Ideal for the monsoon season. Clay soil's water retention is a major advantage."
+  },
+  {
+    "conditions": {
+      "weather_main": "Clouds",
+      "temp_min_celsius": 20,
+      "soil": "Loamy"
+    },
+    "crop": "Groundnut (મગફળી)",
+    "advice": "Cloudy weather is suitable and loamy soil provides good drainage and aeration for the roots."
+  },
+  {
+    "conditions": {
+      "weather_main": "Haze",
+      "temp_min_celsius": 25,
+      "soil": "Alluvial"
+    },
+    "crop": "Wheat (ઘઉં)",
+    "advice": "Wheat thrives in these conditions. Ensure the soil is well-ploughed."
+  }
+]
