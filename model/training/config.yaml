@@ -1,0 +1,51 @@
+# AgriSmart AI - Model Training Configuration
+# IMPORTANT: Official class names and count will be populated strictly from the organizer-provided dataset.
+# DO NOT fabricate or hardcode unofficial disease classes.
+
+project:
+  name: "AgriSmart-AI"
+  experiment_name: "E1_ResNet50_Baseline"
+  tracking_uri: "mlruns"
+
+dataset:
+  root_dir: "data"
+  train_split: "train"
+  val_split: "val"
+  test_split: "test" # Evaluated only once on frozen final model
+  num_classes: null # Set after official class confirmation
+  class_names: []   # Official list inserted after confirmation from organizers
+
+model:
+  architecture: "resnet50"
+  pretrained: true
+  num_classes: null
+
+training:
+  epochs: 30
+  batch_size: 32
+  num_workers: 4
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingLR"
+  seed: 42
+  mixed_precision: true
+
+augmentation:
+  input_resolution: 224
+  horizontal_flip: 0.5
+  vertical_flip: 0.5
+  rotation_degrees: 30
+  brightness_contrast: 0.2
+  color_jitter: 0.2
+  blur: 0.1
+  mild_noise: 0.1
+  mild_occlusion: 0.1
+
+metrics:
+  primary: "macro_f1"
+  secondary: "accuracy"
+  detailed:
+    - "per_class_precision"
+    - "per_class_recall"
+    - "confusion_matrix"
