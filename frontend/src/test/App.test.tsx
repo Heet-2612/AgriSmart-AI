@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
 
@@ -154,6 +154,37 @@ describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
 
     expect(screen.getByText('dropped_leaf.webp')).toBeInTheDocument();
     expect(screen.getByAltText(/selected crop leaf preview/i)).toBeInTheDocument();
+  });
+
+  it('transitions to model unavailable notice and allows resetting back to upload', () => {
+    vi.useFakeTimers();
+    render(<App />);
+    const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
+
+    const testFile = new File(['leaf-data'], 'rice_leaf.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    const predictBtn = screen.getByRole('button', { name: /predict disease/i });
+    fireEvent.click(predictBtn);
+
+    // Initial predicting state
+    expect(screen.getByText(/analyzing your crop image\.\.\./i)).toBeInTheDocument();
+
+    // Advance timer past boundary inside act
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Model unavailable notice rendered
+    expect(screen.getByText(/prediction model unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/diagnostic service is currently offline/i)).toBeInTheDocument();
+
+    // Resetting returns to empty upload dropzone
+    const resetBtn = screen.getByRole('button', { name: /try another image/i });
+    fireEvent.click(resetBtn);
+
+    expect(screen.getByText('Upload a crop or leaf image')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });
 

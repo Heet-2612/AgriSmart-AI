@@ -1,6 +1,9 @@
 import { useState, useRef, ChangeEvent, DragEvent } from 'react';
 import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../components/Button';
+import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
+import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
+import { PredictionResponse } from '../types';
 
 /** Maximum allowed image upload size: 10 MB */
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -41,12 +44,18 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function DiagnosePage() {
+interface DiagnosePageProps {
+  initialResult?: PredictionResponse | null;
+}
+
+export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
+  const [isModelUnavailable, setIsModelUnavailable] = useState<boolean>(false);
+  const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(initialResult);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +143,8 @@ export function DiagnosePage() {
     setPreviewUrl(null);
     setValidationError(null);
     setIsPredicting(false);
+    setIsModelUnavailable(false);
+    setPredictionResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -148,7 +159,11 @@ export function DiagnosePage() {
     if (!selectedFile || isPredicting) return;
     setValidationError(null);
     setIsPredicting(true);
-    // ponytail: frontend state boundary for Task 3 API connection; no fake result generated
+    // ponytail: frontend state boundary for Task 4 API integration — transitions gracefully to model unavailable notice
+    setTimeout(() => {
+      setIsPredicting(false);
+      setIsModelUnavailable(true);
+    }, 400);
   };
 
   return (
@@ -219,8 +234,24 @@ export function DiagnosePage() {
               </div>
             )}
 
-            {/* State 1: No file selected -> Upload Dropzone */}
-            {!selectedFile && (
+            {/* State A: Diagnosis Result Display */}
+            {predictionResult ? (
+              <DiagnosisResult
+                result={predictionResult}
+                imagePreviewUrl={previewUrl}
+                fileName={selectedFile?.name}
+                cropType={cropType}
+                onReset={handleRemove}
+              />
+            ) : isModelUnavailable ? (
+              /* State B: Model Unavailable Notice */
+              <ModelUnavailable
+                fileName={selectedFile?.name}
+                imagePreviewUrl={previewUrl}
+                onReset={handleRemove}
+              />
+            ) : !selectedFile ? (
+              /* State C: No file selected -> Upload Dropzone */
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -269,16 +300,14 @@ export function DiagnosePage() {
                   Supported formats: JPG, PNG, WebP — max 10 MB
                 </p>
               </div>
-            )}
-
-            {/* State 2: Image selected -> Preview & Controls */}
-            {selectedFile && previewUrl && (
+            ) : (
+              /* State D: Image selected -> Preview, Crop Selector, & Predict CTA */
               <div className="space-y-6 text-left">
 
                 {/* Preview Frame */}
                 <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900/5 p-2">
                   <img
-                    src={previewUrl}
+                    src={previewUrl!}
                     alt="Selected crop leaf preview"
                     className="max-h-72 w-full rounded-lg object-contain"
                   />
@@ -360,7 +389,7 @@ export function DiagnosePage() {
                       <span className="font-semibold">Analyzing your crop image...</span>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
-                      Processing visual patterns. API integration will connect in the next phase.
+                      Processing visual patterns. Evaluating model availability...
                     </p>
                   </div>
                 )}
