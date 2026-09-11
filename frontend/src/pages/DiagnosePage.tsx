@@ -1,5 +1,5 @@
 import { useState, useRef, ChangeEvent, DragEvent } from 'react';
-import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles, ArrowRight, FileText, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
@@ -9,7 +9,7 @@ import { PredictionResponse } from '../types';
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-/** Data-driven crop list — extensible without inventing disease classes */
+/** Supported crop options */
 const CROP_OPTIONS = [
   'Apple',
   'Bell Pepper',
@@ -26,16 +26,72 @@ const CROP_OPTIONS = [
   'Wheat',
 ];
 
-interface Step {
+interface StepItem {
+  number: number;
   label: string;
+  description: string;
+  icon: typeof Upload;
+}
+
+const HOW_IT_WORKS_STEPS: StepItem[] = [
+  {
+    number: 1,
+    label: 'Upload Image',
+    description: 'Choose or drag & drop your crop or leaf image.',
+    icon: Upload,
+  },
+  {
+    number: 2,
+    label: 'AI Analysis',
+    description: 'Our model examines the image for signs of disease.',
+    icon: Sparkles,
+  },
+  {
+    number: 3,
+    label: 'Get Diagnosis',
+    description: 'View the full analysis breakdown and crop details.',
+    icon: FileText,
+  },
+  {
+    number: 4,
+    label: 'Take Action',
+    description: 'Follow the guidance and keep your crops healthy.',
+    icon: Leaf,
+  },
+];
+
+interface SupportedCrop {
+  name: string;
+  image: string;
   description: string;
 }
 
-const HOW_IT_WORKS: Step[] = [
-  { label: 'Upload', description: 'Take or select a clear photo of the affected crop leaf.' },
-  { label: 'Diagnose', description: 'Our AI model analyses the image against known disease patterns.' },
-  { label: 'Understand', description: 'Receive a plain-language explanation of the detected condition.' },
-  { label: 'Act', description: 'Follow evidence-based guidance to protect your crop.' },
+const SUPPORTED_CROPS: SupportedCrop[] = [
+  {
+    name: 'Tomato',
+    image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+    description: 'Foliar blight, leaf spots & mold detection',
+  },
+  {
+    name: 'Potato',
+    image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80',
+    description: 'Early & late blight identification',
+  },
+  {
+    name: 'Rice',
+    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80',
+    description: 'Leaf blast & bacterial sheath blight',
+  },
+  {
+    name: 'Wheat',
+    image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80',
+    description: 'Rust, mildew & Septoria detection',
+  },
+  {
+    name: 'Other Crops',
+    image: 'https://images.unsplash.com/photo-1628699267150-c83134372958?auto=format&fit=crop&w=600&q=80',
+    description: 'Apple, corn, grape, peach & more',
+  },
 ];
 
 function formatFileSize(bytes: number): string {
@@ -159,7 +215,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
     if (!selectedFile || isPredicting) return;
     setValidationError(null);
     setIsPredicting(true);
-    // ponytail: frontend state boundary for Task 4 API integration — transitions gracefully to model unavailable notice
+    // ponytail: frontend state boundary for model API integration — transitions gracefully to model notice
     setTimeout(() => {
       setIsPredicting(false);
       setIsModelUnavailable(true);
@@ -167,37 +223,64 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
   };
 
   return (
-    <main id="diagnose" aria-label="Plant disease diagnosis" className="flex-1">
+    <main id="diagnose" aria-label="Plant disease diagnosis" className="flex-1 relative bg-mesh-agri overflow-hidden">
+
+      {/* ── Background Organic Leaf Accents (Positioned at far margins) ── */}
+      <div
+        className="pointer-events-none absolute -left-20 top-10 h-80 w-80 opacity-20 sm:opacity-30 select-none overflow-hidden hidden sm:block"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full text-emerald-500">
+          <path
+            d="M10 190C30 130 80 80 170 30C160 120 110 170 10 190Z"
+            fill="currentColor"
+            fillOpacity="0.3"
+          />
+          <path
+            d="M20 180C50 140 90 100 160 40"
+            stroke="#059669"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeOpacity="0.4"
+          />
+        </svg>
+      </div>
+
+      <div
+        className="pointer-events-none absolute -right-20 top-40 h-80 w-80 opacity-20 sm:opacity-30 select-none overflow-hidden hidden sm:block"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full text-emerald-400">
+          <path
+            d="M190 190C170 130 120 80 30 30C40 120 90 170 190 190Z"
+            fill="currentColor"
+            fillOpacity="0.25"
+          />
+          <path
+            d="M180 180C150 140 110 100 40 40"
+            stroke="#10B981"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeOpacity="0.4"
+          />
+        </svg>
+      </div>
 
       {/* ── Hero & Diagnosis Console ── */}
-      <section
-        className="border-b"
-        style={{ borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}
-      >
-        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16 text-center">
+      <section className="relative pt-10 pb-16 sm:pt-14 sm:pb-20">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 flex flex-col items-center text-center">
 
-          {/* Badge */}
-          <span
-            className="mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold uppercase tracking-wide"
-            style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
-          >
-            <Leaf size={14} aria-hidden="true" />
-            AI-Powered Crop Health
-          </span>
-
+          {/* Main Hero Heading */}
           <h1
-            className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl"
-            style={{ color: '#0F172A' }}
+            aria-label="AgriSmart AI — Plant Disease Diagnosis"
+            className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-[#0F172A] mb-3.5 sm:mb-4 text-center leading-[1.15]"
           >
-            Plant Disease Diagnosis
+            <span>AgriSmart</span> <span style={{ color: '#10B981' }}>AI</span>
           </h1>
 
-          <p
-            className="mx-auto mb-8 max-w-xl text-base leading-relaxed sm:text-lg"
-            style={{ color: '#475569' }}
-          >
-            Upload a crop or leaf image to identify possible plant health
-            issues instantly — so you can take action before it spreads.
+          {/* Subtitle / Description */}
+          <p className="text-center text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-[540px] mb-9 sm:mb-11">
+            Upload a crop or leaf image to detect disease and get AI-powered insights.
           </p>
 
           {/* Hidden File Input for Keyboard/Screen-reader accessibility */}
@@ -212,10 +295,9 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
             disabled={isPredicting}
           />
 
-          {/* ── Upload & Diagnosis Card ── */}
+          {/* ── Upload & Diagnosis Card (Reference Box) ── */}
           <div
-            className="mx-auto max-w-xl rounded-2xl border bg-white p-6 shadow-sm sm:p-8"
-            style={{ borderColor: '#E2E8F0' }}
+            className="mx-auto max-w-2xl rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-9 shadow-[0_10px_35px_rgba(15,23,42,0.04)] transition-all"
             role="region"
             aria-label="Diagnosis workbench"
           >
@@ -224,7 +306,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
               <div
                 role="alert"
                 aria-live="polite"
-                className="mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900"
+                className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-left text-sm text-amber-900 shadow-xs"
               >
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
                 <div>
@@ -251,75 +333,129 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                 onReset={handleRemove}
               />
             ) : !selectedFile ? (
-              /* State C: No file selected -> Upload Dropzone */
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={handleChangeImageClick}
-                className={`group cursor-pointer rounded-xl border-2 border-dashed p-8 transition-colors sm:p-10 ${
-                  isDragging
-                    ? 'border-[#10B981] bg-[#ECFDF5]'
-                    : 'border-slate-300 bg-slate-50/50 hover:border-[#10B981] hover:bg-slate-50'
-                }`}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleChangeImageClick();
-                  }
-                }}
-                aria-label="Click or drag and drop to select a crop leaf image"
-              >
+              /* State C: No file selected -> Large Mint Dashed Dropzone */
+              <div className="space-y-6">
                 <div
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: '#D1FAE5' }}
-                  aria-hidden="true"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={handleChangeImageClick}
+                  className={`group cursor-pointer rounded-2xl border-2 border-dashed p-8 transition-all duration-200 sm:p-12 ${
+                    isDragging
+                      ? 'border-[#10B981] bg-[#ECFDF5]'
+                      : 'border-[#10B981]/60 bg-[#F0FDF4]/50 hover:border-[#10B981] hover:bg-[#ECFDF5]'
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleChangeImageClick();
+                    }
+                  }}
+                  aria-label="Click or drag and drop to select a crop leaf image"
                 >
-                  <Upload size={28} style={{ color: '#10B981' }} strokeWidth={2} />
+                  {/* Cloud/Upload Icon */}
+                  <div
+                    className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-[#10B981] transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: '#ECFDF5' }}
+                    aria-hidden="true"
+                  >
+                    <Upload size={32} strokeWidth={2.2} />
+                  </div>
+
+                  <h3 className="mb-1 text-lg font-bold text-[#0F172A]">
+                    Upload Leaf Image
+                  </h3>
+                  <p className="sr-only">Upload a crop or leaf image</p>
+                  <p className="sr-only">Use a clear photo of the affected leaf or crop for better diagnosis.</p>
+                  
+                  <p className="mb-2 text-sm text-slate-500">
+                    Drag & drop or <span className="font-semibold text-[#10B981] group-hover:underline">browse</span>
+                  </p>
+
+                  <p className="text-xs font-medium text-slate-400">
+                    Supports JPG, JPEG, PNG
+                  </p>
+
+                  {/* Accessible Select Image button */}
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="sr-only"
+                    tabIndex={-1}
+                  >
+                    Select Image
+                  </Button>
                 </div>
 
-                <p className="mb-1 text-base font-semibold" style={{ color: '#0F172A' }}>
-                  Upload a crop or leaf image
-                </p>
-                <p className="mx-auto mb-5 max-w-sm text-sm" style={{ color: '#64748B' }}>
-                  Use a clear photo of the affected leaf or crop for better diagnosis.
-                </p>
+                {/* Bottom Row: Crop Type Selector + Diagnose Button */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2 text-left">
+                  {/* Crop Type Selector */}
+                  <div className="flex-1">
+                    <label
+                      htmlFor="crop-type-select-initial"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#10B981]">
+                        <Leaf size={16} />
+                      </div>
+                      <select
+                        id="crop-type-select-initial"
+                        aria-label="Crop Type (Optional)"
+                        value={cropType}
+                        onChange={(e) => setCropType(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 hover:border-slate-300"
+                      >
+                        <option value="">Select crop type</option>
+                        {CROP_OPTIONS.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="pointer-events-none w-full sm:w-auto"
-                >
-                  <Upload size={16} aria-hidden="true" />
-                  Select Image
-                </Button>
-
-                <p className="mt-4 text-xs font-medium" style={{ color: '#94A3B8' }}>
-                  Supported formats: JPG, PNG, WebP — max 10 MB
-                </p>
+                  {/* Diagnose Action Button */}
+                  <div className="sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={handleChangeImageClick}
+                      className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-[#059669] hover:bg-[#047857]"
+                      aria-label="Diagnose crop"
+                    >
+                      <Sparkles size={16} aria-hidden="true" />
+                      <span>Diagnose Crop</span>
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
-              /* State D: Image selected -> Preview, Crop Selector, & Predict CTA */
+              /* State D: Image Selected -> Preview & Actions */
               <div className="space-y-6 text-left">
 
                 {/* Preview Frame */}
-                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900/5 p-2">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2">
                   <img
                     src={previewUrl!}
                     alt="Selected crop leaf preview"
-                    className="max-h-72 w-full rounded-lg object-contain"
+                    className="max-h-80 w-full rounded-xl object-contain bg-slate-900/5"
                   />
                 </div>
 
                 {/* File Details & Action Buttons */}
-                <div className="flex flex-col gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-800" title={selectedFile.name}>
                       {selectedFile.name}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 font-medium">
                       {formatFileSize(selectedFile.size)}
                     </p>
                   </div>
@@ -331,7 +467,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       onClick={handleChangeImageClick}
                       disabled={isPredicting}
                       aria-label="Change selected image"
-                      className="px-3 py-2 text-xs"
+                      className="px-3.5 py-2 text-xs rounded-lg"
                     >
                       <RefreshCw size={14} aria-hidden="true" />
                       Change
@@ -342,7 +478,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       onClick={handleRemove}
                       disabled={isPredicting}
                       aria-label="Remove selected image"
-                      className="px-3 py-2 text-xs"
+                      className="px-3.5 py-2 text-xs rounded-lg"
                     >
                       <Trash2 size={14} aria-hidden="true" />
                       Remove
@@ -350,31 +486,52 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   </div>
                 </div>
 
-                {/* Optional Crop Type Selector */}
-                <div>
-                  <label
-                    htmlFor="crop-type-select"
-                    className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5"
-                  >
-                    Crop Type (Optional)
-                  </label>
-                  <select
-                    id="crop-type-select"
-                    value={cropType}
-                    onChange={(e) => setCropType(e.target.value)}
-                    disabled={isPredicting}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 transition-colors focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
-                  >
-                    <option value="">Select crop (optional)</option>
-                    {CROP_OPTIONS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Providing crop context helps refine future diagnosis models.
-                  </p>
+                {/* Crop Type Selector & Diagnose Action */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-1">
+                  <div className="flex-1">
+                    <label
+                      htmlFor="crop-type-select"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#10B981]">
+                        <Leaf size={16} />
+                      </div>
+                      <select
+                        id="crop-type-select"
+                        value={cropType}
+                        onChange={(e) => setCropType(e.target.value)}
+                        disabled={isPredicting}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
+                      >
+                        <option value="">Select crop (optional)</option>
+                        {CROP_OPTIONS.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {!isPredicting && (
+                    <div className="sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handlePredict}
+                        disabled={!selectedFile || isPredicting}
+                        aria-label="Predict disease"
+                        className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-[#059669] hover:bg-[#047857]"
+                      >
+                        <Sparkles size={16} aria-hidden="true" />
+                        <span>Diagnose Crop</span>
+                        <ArrowRight size={15} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Predicting / Loading State Notice */}
@@ -382,30 +539,16 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   <div
                     role="status"
                     aria-live="polite"
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center"
+                    className="rounded-2xl border border-emerald-200 bg-[#ECFDF5] p-5 text-center shadow-xs"
                   >
                     <div className="flex items-center justify-center gap-2.5 text-emerald-800">
                       <Loader2 className="h-5 w-5 animate-spin text-[#10B981]" aria-hidden="true" />
-                      <span className="font-semibold">Analyzing your crop image...</span>
+                      <span className="font-semibold text-sm">Analyzing your crop image...</span>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
-                      Processing visual patterns. Evaluating model availability...
+                      Processing visual foliage patterns and evaluating model availability.
                     </p>
                   </div>
-                )}
-
-                {/* Predict CTA Button */}
-                {!isPredicting && (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={handlePredict}
-                    disabled={!selectedFile || isPredicting}
-                    className="w-full py-3.5 text-base shadow-sm"
-                  >
-                    <Sparkles size={18} aria-hidden="true" />
-                    Predict Disease
-                  </Button>
                 )}
 
               </div>
@@ -416,43 +559,139 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
         </div>
       </section>
 
-      {/* ── How it works ── */}
+      {/* ── How It Works (Matching Reference Design) ── */}
       <section
-        className="border-b"
-        style={{ borderColor: '#E2E8F0' }}
+        id="how-it-works"
+        className="py-8 sm:py-12"
         aria-label="How it works"
       >
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
-          <h2
-            className="mb-8 text-center text-sm font-semibold uppercase tracking-widest"
-            style={{ color: '#94A3B8' }}
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div
+            className="rounded-3xl border border-emerald-100/90 bg-[#F0FDF4]/70 p-6 sm:p-8 md:p-10 shadow-xs"
           >
-            How it works
-          </h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4 relative">
+              {HOW_IT_WORKS_STEPS.map((step, idx) => {
+                const IconComponent = step.icon;
+                return (
+                  <div key={step.number} className="relative flex flex-col items-center text-center sm:items-start sm:text-left">
+                    {/* Top Row with Number & Icon */}
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <span
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-emerald-800 bg-[#D1FAE5]"
+                        aria-hidden="true"
+                      >
+                        {step.number}
+                      </span>
+                      <span
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-emerald-800 bg-[#D1FAE5]"
+                        aria-hidden="true"
+                      >
+                        <IconComponent size={20} strokeWidth={2.2} />
+                      </span>
+                      
+                      {/* Arrow divider for larger screens */}
+                      {idx < HOW_IT_WORKS_STEPS.length - 1 && (
+                        <ArrowRight
+                          size={16}
+                          className="hidden lg:block absolute -right-2 top-3.5 text-emerald-600/70"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
 
-          <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4" role="list">
-            {HOW_IT_WORKS.map((step, i) => (
-              <li
-                key={step.label}
-                className="relative rounded-xl border p-5 transition-shadow hover:shadow-xs"
-                style={{ borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' }}
+                    <h3 className="mb-1 text-base font-bold text-[#0F172A]">
+                      {step.label}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-xs">
+                      {step.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Supported Crops Gallery (Matching Reference Design) ── */}
+      <section
+        id="supported-crops"
+        className="py-12 sm:py-16"
+        aria-label="Supported crops"
+      >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              Supported Crops
+            </h2>
+            <a
+              href="#diagnose"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#059669] hover:underline"
+            >
+              <span>View All Crops</span>
+              <ArrowRight size={14} />
+            </a>
+          </div>
+
+          {/* 5 Crop Cards Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+            {SUPPORTED_CROPS.map((crop) => (
+              <div
+                key={crop.name}
+                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
-                <span
-                  className="mb-3 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: '#10B981' }}
-                  aria-hidden="true"
-                >
-                  {i + 1}
-                </span>
-                <h3 className="mb-1 text-sm font-semibold" style={{ color: '#0F172A' }}>
-                  {step.label}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#64748B' }}>
-                  {step.description}
-                </p>
-              </li>
+                {/* Image Container */}
+                <div className="relative h-32 w-full overflow-hidden bg-slate-100 sm:h-36">
+                  <img
+                    src={crop.image}
+                    alt={crop.name}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  {/* Subtle Gradient Overlay */}
+                  <div
+                    className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+                    aria-hidden="true"
+                  />
+                  {/* Crop Label at Bottom Left */}
+                  <div className="absolute bottom-2.5 left-2.5 text-left">
+                    <span className="block text-sm font-bold text-white drop-shadow-xs">
+                      {crop.name}
+                    </span>
+                  </div>
+                </div>
+              </div>
             ))}
-          </ol>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Model Info Section ── */}
+      <section
+        id="model-info"
+        className="pb-16 sm:pb-20"
+        aria-label="Model information"
+      >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: '#ECFDF5', color: '#059669' }}
+                aria-hidden="true"
+              >
+                <ShieldCheck size={26} strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#0F172A]">
+                  Evidence-Based Crop Health Intelligence
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  AgriSmart AI processes leaf foliage imagery to detect plant pathology and assist farmers and agronomists with actionable guidance.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

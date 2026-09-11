@@ -2,17 +2,26 @@
 
 /* ============================================================
    AgriSmart AI — Design System
-   Brand palette + global tokens
+   Brand palette + global tokens (Reference Design Alignment)
    ============================================================ */
 
 @theme {
   /* Brand colours */
-  --color-primary:   #10B981;
-  --color-primary-dark: #059669;
-  --color-dark:      #0F172A;
-  --color-amber:     #F59E0B;
-  --color-amber-dark: #D97706;
-  --color-bg:        #F8FAFC;
+  --color-primary:       #10B981;
+  --color-primary-dark:  #059669;
+  --color-primary-light: #D1FAE5;
+  --color-primary-subtle: #ECFDF5;
+  
+  --color-dark:          #0F172A;
+  --color-dark-muted:    #475569;
+  --color-dark-subtle:   #94A3B8;
+
+  --color-amber:         #F59E0B;
+  --color-amber-dark:    #D97706;
+  --color-amber-light:   #FEF3C7;
+
+  --color-bg:            #F8FAFC;
+  --color-card-bg:       #FFFFFF;
 
   /* Neutral scale (slate) */
   --color-slate-50:  #F8FAFC;
@@ -27,14 +36,14 @@
   --color-slate-900: #0F172A;
 
   /* Typography */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Spacing */
   --spacing-section: 4rem;
 }
 
 /* ============================================================
-   Base resets
+   Base resets & typography
    ============================================================ */
 
 *, *::before, *::after {
@@ -54,6 +63,16 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Background atmospheric gradient resembling reference */
+.bg-mesh-agri {
+  background: 
+    radial-gradient(ellipse at 15% 10%, rgba(16, 185, 129, 0.07) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 90%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+    #F8FAFC;
 }
 
 /* ============================================================
@@ -76,7 +95,7 @@ h1, h2, h3, h4 {
   margin: 0;
 }
 
-h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
+h1 { font-size: clamp(2rem, 5vw, 3rem); }
 h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
 h3 { font-size: clamp(1.1rem, 2vw, 1.35rem); }
 

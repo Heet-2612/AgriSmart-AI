@@ -35,16 +35,16 @@ export function DiagnosisResult({
       className="space-y-6 text-left"
     >
       {/* ── Main Diagnostic Overview Card ── */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center">
 
           {/* Uploaded Leaf Preview (if available) */}
           {imagePreviewUrl && (
-            <div className="relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100/70 p-1.5 md:w-44">
+            <div className="relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1.5 md:w-44">
               <img
                 src={imagePreviewUrl}
                 alt="Diagnosed crop leaf sample"
-                className="h-36 w-full rounded-lg object-contain md:h-36"
+                className="h-36 w-full rounded-lg object-contain md:h-36 bg-slate-900/5"
               />
               {fileName && (
                 <p className="mt-1.5 truncate text-center text-xs font-medium text-slate-500" title={fileName}>
@@ -58,16 +58,16 @@ export function DiagnosisResult({
           <div className="flex-1 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide"
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                 style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
               >
-                <CheckCircle2 size={12} aria-hidden="true" />
+                <CheckCircle2 size={13} aria-hidden="true" />
                 Diagnosis Output
               </span>
 
               {cropType && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                  <Leaf size={11} aria-hidden="true" />
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                  <Leaf size={12} aria-hidden="true" className="text-emerald-600" />
                   Crop: {cropType}
                 </span>
               )}
@@ -81,7 +81,7 @@ export function DiagnosisResult({
                 {displayName}
               </h2>
               {result.display_name && result.predicted_class && result.display_name !== result.predicted_class && (
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
                   <Tag size={12} aria-hidden="true" />
                   Technical class: {result.predicted_class}
                 </p>
@@ -90,12 +90,12 @@ export function DiagnosisResult({
 
             {/* Metrics Ribbon */}
             <div className="flex flex-wrap items-center gap-3 pt-1">
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2">
                 <span className="block text-xs font-medium text-slate-500">Confidence Score</span>
-                <span className="text-base font-bold text-slate-900">{confidencePercent}</span>
+                <span className="text-base font-bold text-emerald-700">{confidencePercent}</span>
               </div>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2">
                 <span className="block text-xs font-medium text-slate-500">Model Version</span>
                 <span className="text-base font-semibold text-slate-700">
                   {result.model_version || 'v0.1.0'}
@@ -110,14 +110,14 @@ export function DiagnosisResult({
 
       {/* ── Precaution & Guidance Section (Rendered only when precaution is present) ── */}
       {result.precaution && result.precaution.trim().length > 0 && (
-        <div className="rounded-xl border border-emerald-200 bg-[#ECFDF5]/70 p-5">
-          <div className="flex items-start gap-3">
+        <div className="rounded-2xl border border-emerald-200/80 bg-[#ECFDF5]/80 p-5 sm:p-6 shadow-xs">
+          <div className="flex items-start gap-3.5">
             <div
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
               style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
               aria-hidden="true"
             >
-              <ShieldAlert size={18} strokeWidth={2.2} />
+              <ShieldAlert size={20} strokeWidth={2.2} />
             </div>
 
             <div>
@@ -134,24 +134,24 @@ export function DiagnosisResult({
 
       {/* ── Probabilities Breakdown (Rendered only when probabilities map is provided) ── */}
       {probabilitiesList.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="mb-3.5 flex items-center gap-2">
-            <BarChart3 size={18} className="text-slate-600" aria-hidden="true" />
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
+          <div className="mb-4 flex items-center gap-2">
+            <BarChart3 size={18} className="text-emerald-700" aria-hidden="true" />
             <h3 className="text-sm font-bold text-slate-900">
               Confidence Distribution
             </h3>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {probabilitiesList.map(([className, prob]) => {
               const percent = typeof prob === 'number' && Number.isFinite(prob) ? prob * 100 : 0;
               return (
                 <div key={className} className="space-y-1">
                   <div className="flex justify-between text-xs font-medium text-slate-700">
                     <span>{className}</span>
-                    <span>{percent.toFixed(1)}%</span>
+                    <span className="font-semibold text-slate-800">{percent.toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className="h-full rounded-full transition-all duration-300"
                       style={{
@@ -173,11 +173,11 @@ export function DiagnosisResult({
           type="button"
           variant="primary"
           onClick={onReset}
-          className="w-full py-3 text-sm font-semibold sm:w-auto"
+          className="w-full sm:w-auto py-3 px-6 text-sm font-semibold rounded-xl bg-[#059669] hover:bg-[#047857]"
           aria-label="Upload another image"
         >
           <RefreshCw size={16} aria-hidden="true" />
-          Upload Another Image
+          <span>Upload Another Image</span>
         </Button>
       </div>
 
