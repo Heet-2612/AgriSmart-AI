@@ -1,16 +1,20 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 from fastapi import UploadFile, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
+from app.db.models.prediction import PredictionLog
 from model.inference.predict import predict, ModelNotReadyError
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 MAX_FILE_SIZE = 15 * 1024 * 1024
 
-async def process_prediction(image: UploadFile):
-    """Validate uploaded image and invoke the canonical model prediction interface."""
+
+async def process_prediction(image: UploadFile, db: Optional[AsyncSession] = None):
+    """Validate uploaded image, invoke model prediction interface, and prepare DB persistence."""
     if not image.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -52,12 +56,26 @@ async def process_prediction(image: UploadFile):
 
         try:
             result = predict(temp_path, checkpoint_path=settings.MODEL_CHECKPOINT_PATH)
+
+            # Persist prediction log to database if session is provided and result is valid
+            if db is not None and isinstance(result, dict) and "predicted_class" in result:
+                log_entry = PredictionLog(
+                    image_filename=image.filename,
+                    predicted_class=result.get("predicted_class"),
+                    confidence=result.get("confidence"),
+                    model_version=result.get("model_version", settings.MODEL_VERSION),
+                )
+                db.add(log_entry)
+                await db.flush()
+
             return result
         except ModelNotReadyError as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=str(e)
             )
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

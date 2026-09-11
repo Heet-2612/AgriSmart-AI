@@ -1,22 +1,36 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.schemas import HealthResponse
 from app.api.routes.predictions import router as predictions_router
+from app.core.database import close_db_engine
+from app.core.errors import AppError, app_error_handler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_db_engine()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="AgriSmart AI - Intelligent Crop Disease Classification API for Smart India Hackathon 2026"
+    description="AgriSmart AI - Intelligent Crop Disease Classification API for Smart India Hackathon 2026",
+    lifespan=lifespan,
 )
+
+app.add_exception_handler(AppError, app_error_handler)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get(
     "/health",
@@ -27,5 +41,6 @@ app.add_middleware(
 async def health():
     """Health check endpoint to verify backend operational status."""
     return {"status": "ok"}
+
 
 app.include_router(predictions_router)
