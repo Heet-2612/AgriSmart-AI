@@ -40,6 +40,12 @@ class InferenceError(AppError):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ChatProviderUnavailableError(AppError):
+    """Raised when both primary and fallback GenAI chat providers are unavailable."""
+    def __init__(self, message: str = "Assistant temporarily unavailable. Please try again."):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     """Standardized handler for domain exceptions."""
     return JSONResponse(
