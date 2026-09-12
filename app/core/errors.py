@@ -34,6 +34,12 @@ class DatabaseError(AppError):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class InferenceError(AppError):
+    """Raised when ML inference execution fails."""
+    def __init__(self, message: str = "Model inference failed."):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     """Standardized handler for domain exceptions."""
     return JSONResponse(
