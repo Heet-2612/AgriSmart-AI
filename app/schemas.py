@@ -11,7 +11,7 @@ class PredictionResponse(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     model_version: str
     display_name: Optional[str] = None
-    precaution: Optional[str] = None
+    precautions: Optional[str] = None
     probabilities: Optional[Dict[str, float]] = None
 
 class ErrorResponse(BaseModel):
@@ -37,7 +37,7 @@ class ChatContext(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     probabilities: Dict[str, float]
     model_version: str
-    leaf_detected: bool
+    leaf_detected: Optional[bool] = None
     fallback_used: Optional[bool] = False
     disease_metadata: Optional[DiseaseMetadata] = None
     weather_context: Optional[WeatherContext] = None

@@ -29,85 +29,94 @@ def valid_context():
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")
-def test_groq_successful_answer(mock_get_groq, mock_get_gemini, valid_context):
-    mock_groq = MagicMock()
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock(message=MagicMock(content="This is a Groq answer."))]
-    mock_groq.chat.completions.create.return_value = mock_response
-    mock_get_groq.return_value = mock_groq
-    
-    mock_get_gemini.return_value = None
-    
-    answer = generate_chat_answer(valid_context)
-    
-    assert isinstance(answer, ChatAnswer)
-    assert answer.answer == "This is a Groq answer."
-    assert answer.source == "groq"
-    assert answer.grounded is True
-    assert answer.session_id == valid_context.session_id
-
-@patch("app.services.genai_service.get_gemini_client")
-@patch("app.services.genai_service.get_groq_client")
-def test_groq_temporary_failure_gemini_fallback(mock_get_groq, mock_get_gemini, valid_context):
-    from groq import InternalServerError as GroqInternalServerError
-    mock_groq = MagicMock()
-    mock_groq.chat.completions.create.side_effect = GroqInternalServerError("Server Error", response=MagicMock(), body=None)
-    mock_get_groq.return_value = mock_groq
-    
+def test_gemini_successful_answer(mock_get_groq, mock_get_gemini, valid_context):
     mock_gemini = MagicMock()
     mock_response = MagicMock()
     mock_response.text = "This is a Gemini answer."
     mock_gemini.models.generate_content.return_value = mock_response
     mock_get_gemini.return_value = mock_gemini
     
+    mock_get_groq.return_value = None
+    
     answer = generate_chat_answer(valid_context)
     
+    assert isinstance(answer, ChatAnswer)
     assert answer.answer == "This is a Gemini answer."
     assert answer.source == "gemini"
+    assert answer.grounded is True
+    assert answer.session_id == valid_context.session_id
+    
+    # Verify kwargs contain system instruction
+    call_args = mock_gemini.models.generate_content.call_args
+    assert call_args is not None
+    kwargs = call_args[1]
+    assert "config" in kwargs
+    assert kwargs["config"].system_instruction is not None
+    assert kwargs["contents"] == valid_context.question
+
+@patch("app.services.genai_service.get_gemini_client")
+@patch("app.services.genai_service.get_groq_client")
+def test_gemini_temporary_failure_groq_fallback(mock_get_groq, mock_get_gemini, valid_context):
+    mock_gemini = MagicMock()
+    # 503 is temporary, should trigger fallback
+    error = GeminiAPIError(503, {"error": "Service Unavailable"}, None)
+    mock_gemini.models.generate_content.side_effect = error
+    mock_get_gemini.return_value = mock_gemini
+    
+    mock_groq = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock(message=MagicMock(content="This is a Groq answer."))]
+    mock_groq.chat.completions.create.return_value = mock_response
+    mock_get_groq.return_value = mock_groq
+    
+    answer = generate_chat_answer(valid_context)
+    
+    assert answer.answer == "This is a Groq answer."
+    assert answer.source == "groq"
     assert answer.grounded is True
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")
-def test_groq_auth_failure_no_fallback(mock_get_groq, mock_get_gemini, valid_context):
-    from groq import APIError as GroqAPIError
-    mock_groq = MagicMock()
-    # 401 Unauthorized/Fatal error -> should raise
-    mock_groq.chat.completions.create.side_effect = GroqAPIError("Unauthorized", request=MagicMock(), body=None)
-    mock_get_groq.return_value = mock_groq
+def test_gemini_auth_failure_no_fallback(mock_get_groq, mock_get_gemini, valid_context):
+    mock_gemini = MagicMock()
+    # 403 Forbidden is NOT in (429, 500, 502, 503, 504) -> should raise
+    error = GeminiAPIError(403, {"error": "Forbidden"}, None)
+    mock_gemini.models.generate_content.side_effect = error
+    mock_get_gemini.return_value = mock_gemini
     
-    mock_get_gemini.return_value = None
+    mock_get_groq.return_value = None
     
-    with pytest.raises(GroqAPIError):
+    with pytest.raises(GeminiAPIError):
         generate_chat_answer(valid_context)
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")
-def test_groq_empty_response_fallback(mock_get_groq, mock_get_gemini, valid_context):
+def test_gemini_empty_response_fallback(mock_get_groq, mock_get_gemini, valid_context):
+    mock_gemini = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "" # Empty response
+    mock_gemini.models.generate_content.return_value = mock_response
+    mock_get_gemini.return_value = mock_gemini
+    
     mock_groq = MagicMock()
     mock_response_groq = MagicMock()
-    mock_response_groq.choices = [MagicMock(message=MagicMock(content=""))] # Empty response
+    mock_response_groq.choices = [MagicMock(message=MagicMock(content="Groq fallback."))]
     mock_groq.chat.completions.create.return_value = mock_response_groq
     mock_get_groq.return_value = mock_groq
     
-    mock_gemini = MagicMock()
-    mock_response = MagicMock()
-    mock_response.text = "Gemini fallback."
-    mock_gemini.models.generate_content.return_value = mock_response
-    mock_get_gemini.return_value = mock_gemini
-    
     answer = generate_chat_answer(valid_context)
-    assert answer.source == "gemini"
+    assert answer.source == "groq"
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")
-def test_gemini_empty_response(mock_get_groq, mock_get_gemini, valid_context):
-    mock_get_groq.return_value = None # Skip Groq
+def test_groq_empty_response(mock_get_groq, mock_get_gemini, valid_context):
+    mock_get_gemini.return_value = None # Skip Gemini
     
-    mock_gemini = MagicMock()
-    mock_response = MagicMock()
-    mock_response.text = "   " # Empty after strip
-    mock_gemini.models.generate_content.return_value = mock_response
-    mock_get_gemini.return_value = mock_gemini
+    mock_groq = MagicMock()
+    mock_response_groq = MagicMock()
+    mock_response_groq.choices = [MagicMock(message=MagicMock(content="   "))] # Empty after strip
+    mock_groq.chat.completions.create.return_value = mock_response_groq
+    mock_get_groq.return_value = mock_groq
     
     with pytest.raises(ChatProviderUnavailableError):
         generate_chat_answer(valid_context)
@@ -116,13 +125,15 @@ def test_gemini_empty_response(mock_get_groq, mock_get_gemini, valid_context):
 @patch("app.services.genai_service.get_groq_client")
 def test_both_providers_fail(mock_get_groq, mock_get_gemini, valid_context):
     from groq import InternalServerError as GroqInternalServerError
-    mock_groq = MagicMock()
-    mock_groq.chat.completions.create.side_effect = GroqInternalServerError("Server Error", response=MagicMock(), body=None)
-    mock_get_groq.return_value = mock_groq
-    
     mock_gemini = MagicMock()
     mock_gemini.models.generate_content.side_effect = GeminiAPIError(503, {}, None)
     mock_get_gemini.return_value = mock_gemini
+    
+    mock_groq = MagicMock()
+    mock_response = MagicMock()
+    mock_response.request = MagicMock()
+    mock_groq.chat.completions.create.side_effect = GroqInternalServerError("Server Error", response=mock_response, body=None)
+    mock_get_groq.return_value = mock_groq
     
     with pytest.raises(ChatProviderUnavailableError):
         generate_chat_answer(valid_context)
@@ -159,6 +170,32 @@ def test_leaf_detected_false():
     assert answer.grounded is False
     assert answer.source == "system"
     assert "uploading a clearer photo" in answer.answer
+
+@patch("app.services.genai_service.get_gemini_client")
+@patch("app.services.genai_service.get_groq_client")
+def test_leaf_detected_none(mock_get_groq, mock_get_gemini):
+    context = ChatContext(
+        predicted_class="Apple_scab",
+        confidence=0.95,
+        probabilities={"Apple_scab": 0.95, "Healthy": 0.05},
+        model_version="v1.0",
+        leaf_detected=None,
+        disease_metadata=DiseaseMetadata(display_name="Scab", symptoms="", treatment=""),
+        question="What should I do?",
+        session_id=uuid4()
+    )
+    
+    mock_gemini = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "This works fine."
+    mock_gemini.models.generate_content.return_value = mock_response
+    mock_get_gemini.return_value = mock_gemini
+    
+    mock_get_groq.return_value = None
+    
+    answer = generate_chat_answer(context)
+    assert answer.grounded is True
+    assert answer.source == "gemini"
 
 def test_ambiguous_prediction_grounding(valid_context):
     # Set ambiguity with diff < 0.15

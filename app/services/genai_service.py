@@ -87,7 +87,7 @@ def _build_system_prompt(context: ChatContext, grounding_text: str) -> str:
     )
 
 def generate_chat_answer(context: ChatContext) -> ChatAnswer:
-    if not context.leaf_detected:
+    if context.leaf_detected is False:
         return ChatAnswer(
             answer="I couldn't find diagnosis details for this — please try uploading a clearer photo of the leaf.",
             session_id=context.session_id,
@@ -113,9 +113,41 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
     gemini = get_gemini_client()
     groq = get_groq_client()
     
-    groq_failed = False
-    # Try Groq first
-    if groq:
+    gemini_failed = False
+    # Try Gemini first
+    if gemini:
+        try:
+            response = gemini.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=user_prompt,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=system_prompt
+                )
+            )
+            if response.text and response.text.strip():
+                return ChatAnswer(
+                    answer=response.text.strip(),
+                    session_id=context.session_id,
+                    grounded=True,
+                    source="gemini",
+                    timestamp=datetime.now(timezone.utc)
+                )
+            else:
+                logger.warning("Gemini returned an empty response, triggering fallback.")
+                gemini_failed = True
+        except GeminiAPIError as e:
+            code = getattr(e, 'code', None)
+            if code in (429, 500, 502, 503, 504):
+                logger.warning(f"Gemini generation transient failure (code={code}), falling back to Groq: {e}")
+                gemini_failed = True
+            else:
+                logger.error(f"Gemini generation fatal error (code={code}): {e}")
+                raise # Bubble up fatal/auth errors
+    else:
+        gemini_failed = True
+            
+    # Fallback to Groq
+    if groq and gemini_failed:
         try:
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
@@ -136,48 +168,16 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
                     timestamp=datetime.now(timezone.utc)
                 )
             else:
-                logger.warning("Groq returned an empty response, triggering fallback.")
-                groq_failed = True
+                logger.error("Groq returned an empty response.")
+                raise ChatProviderUnavailableError("Empty response from providers")
                 
         except (GroqInternalServerError, GroqAPIConnectionError, GroqRateLimitError) as e:
-            logger.warning(f"Groq transient generation failed, falling back to Gemini: {e}")
-            groq_failed = True
+            logger.error(f"Groq transient generation failed: {e}")
+            raise ChatProviderUnavailableError() from e
         except GroqAPIError as e:
             # E.g. authentication errors bubble up
             logger.error(f"Groq generation fatal error: {e}")
-            raise # Bubble up fatal/auth errors
-    else:
-        groq_failed = True
-            
-    # Fallback to Gemini
-    if gemini and groq_failed:
-        try:
-            response = gemini.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=user_prompt,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system_prompt
-                )
-            )
-            if response.text and response.text.strip():
-                return ChatAnswer(
-                    answer=response.text.strip(),
-                    session_id=context.session_id,
-                    grounded=True,
-                    source="gemini",
-                    timestamp=datetime.now(timezone.utc)
-                )
-            else:
-                logger.error("Gemini returned an empty response.")
-                raise ChatProviderUnavailableError("Empty response from providers")
-        except GeminiAPIError as e:
-            code = getattr(e, 'code', None)
-            if code in (429, 500, 502, 503, 504):
-                logger.error(f"Gemini transient generation failed: {e}")
-                raise ChatProviderUnavailableError() from e
-            else:
-                logger.error(f"Gemini generation fatal error (code={code}): {e}")
-                raise
+            raise
             
     # Both failed or unavailable
     raise ChatProviderUnavailableError()
