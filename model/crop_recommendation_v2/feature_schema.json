@@ -1,0 +1,76 @@
+{
+  "model_version": "v2.0.0-draft",
+  "name": "AgriSmart AI Farmer-Friendly Crop Recommendation Feature Schema",
+  "description": "Inference and training feature specification for farmer-facing crop recommendation.",
+  "features": {
+    "location": {
+      "type": "categorical",
+      "required": true,
+      "description": "Indian State, District, or agro-climatic region identifier.",
+      "farmer_input_mode": "GPS / Search / Dropdown"
+    },
+    "temperature": {
+      "type": "numeric",
+      "unit": "celsius",
+      "bounds": [-10.0, 60.0],
+      "required": true,
+      "description": "Ambient temperature obtained automatically from Weather API."
+    },
+    "humidity": {
+      "type": "numeric",
+      "unit": "percentage",
+      "bounds": [0.0, 100.0],
+      "required": true,
+      "description": "Relative humidity obtained automatically from Weather API."
+    },
+    "rainfall": {
+      "type": "numeric",
+      "unit": "mm",
+      "bounds": [0.0, 2500.0],
+      "required": true,
+      "description": "Precipitation volume / seasonal rainfall obtained automatically from Weather API."
+    },
+    "soil_type": {
+      "type": "categorical",
+      "required": true,
+      "allowed_values": [
+        "Alluvial",
+        "Black",
+        "Red",
+        "Laterite",
+        "Clay",
+        "Sandy",
+        "Loamy",
+        "Unknown"
+      ],
+      "description": "Farmer-friendly soil classification selection."
+    },
+    "previous_crop": {
+      "type": "categorical",
+      "required": true,
+      "allowed_values": [
+        "rice",
+        "wheat",
+        "cotton",
+        "maize",
+        "pulses",
+        "sugarcane",
+        "groundnut",
+        "millets",
+        "soybean",
+        "none",
+        "unknown"
+      ],
+      "description": "Farmer-friendly preceding crop grown in the field."
+    }
+  },
+  "target": {
+    "name": "recommended_crop",
+    "type": "categorical"
+  },
+  "inference_contract": {
+    "decoupled_weather": true,
+    "top_k_support": true,
+    "suitability_scoring": true
+  }
+}

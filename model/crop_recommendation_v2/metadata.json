@@ -1,0 +1,96 @@
+{
+  "model_name": "AgriSmart AI Crop Recommendation Model v2 (Farmer-Friendly Multi-Source)",
+  "model_type": "RandomForestClassifier",
+  "model_version": "v2.0.0",
+  "algorithm": "sklearn.pipeline.Pipeline(RandomForestClassifier)",
+  "dataset": {
+    "name": "AgriSmart Empirical Multi-Source Indian Agricultural Dataset v2",
+    "sources": [
+      "Directorate of Economics and Statistics (DES), Ministry of Agriculture & Farmers Welfare, India",
+      "ICRISAT Meso-Level District Agricultural Database (VDSA)",
+      "ICAR-CRIDA District Agricultural Contingency Plans & NBSS&LUP Soil Taxonomy",
+      "India Meteorological Department (IMD) District Climatological Normals & Seasonal Series"
+    ],
+    "license": "Open Government Data (OGD) India / Academic Research Open Access",
+    "features": [
+      "state",
+      "district",
+      "soil_type",
+      "previous_crop",
+      "temperature",
+      "humidity",
+      "rainfall"
+    ],
+    "target": "recommended_crop"
+  },
+  "dataset_rows": 31290,
+  "categorical_features": [
+    "state",
+    "district",
+    "soil_type",
+    "previous_crop"
+  ],
+  "numerical_features": [
+    "temperature",
+    "humidity",
+    "rainfall"
+  ],
+  "feature_names": [
+    "state",
+    "district",
+    "soil_type",
+    "previous_crop",
+    "temperature",
+    "humidity",
+    "rainfall"
+  ],
+  "target_name": "recommended_crop",
+  "classes": [
+    "bajra",
+    "banana",
+    "chickpea",
+    "cotton",
+    "groundnut",
+    "jowar",
+    "maize",
+    "moong",
+    "mustard",
+    "potato",
+    "pulses",
+    "rice",
+    "sesame",
+    "soybean",
+    "sugarcane",
+    "urad",
+    "vegetables",
+    "wheat"
+  ],
+  "num_classes": 18,
+  "random_seed": 42,
+  "training_sample_count": 25032,
+  "test_sample_count": 6258,
+  "evaluation_metrics": {
+    "accuracy": 0.6168104825822947,
+    "top3_accuracy": 0.9677213167146053,
+    "top5_accuracy": 1.0,
+    "macro_f1": 0.48251214925100494,
+    "macro_precision": 0.5148106803081128,
+    "macro_recall": 0.48672580740238364,
+    "weighted_f1": 0.5968913968605734
+  },
+  "feature_importances": {
+    "state": 0.0299,
+    "district": 0.0352,
+    "soil_type": 0.1858,
+    "previous_crop": 0.3918,
+    "temperature": 0.1328,
+    "humidity": 0.1039,
+    "rainfall": 0.1207
+  },
+  "training_date": "2026-09-12T14:32:32.911037+00:00",
+  "limitations": [
+    "Model recommendations reflect empirical seasonal agro-ecological patterns across 13 major Indian agricultural states.",
+    "Weather features must be provided as seasonal/ambient aggregates (C, %, mm).",
+    "High confidence recommendations indicate strong historical suitability, but micro-plot drainage and disease pressure must still be evaluated by the farmer."
+  ]
+}
