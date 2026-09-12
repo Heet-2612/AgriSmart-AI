@@ -1,5 +1,19 @@
 import os
+from pathlib import Path
 from pydantic import BaseModel, Field
+
+# Load .env file into os.environ if present in project root
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    with open(_env_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key not in os.environ:
+                    os.environ[key] = val
 
 class Settings(BaseModel):
     PROJECT_NAME: str = "AgriSmart AI"
@@ -11,6 +25,9 @@ class Settings(BaseModel):
             "postgresql+asyncpg://postgres:postgres@localhost:5432/agrismart_db",
         )
     )
+    DB_POOL_SIZE: int = Field(default_factory=lambda: int(os.getenv("DB_POOL_SIZE", "5")))
+    DB_MAX_OVERFLOW: int = Field(default_factory=lambda: int(os.getenv("DB_MAX_OVERFLOW", "10")))
+    DB_ECHO: bool = Field(default_factory=lambda: os.getenv("DB_ECHO", "false").lower() in ("true", "1"))
     MODEL_CHECKPOINT_PATH: str = Field(
         default_factory=lambda: os.getenv(
             "MODEL_CHECKPOINT_PATH", "model/checkpoints/best_model.pt"

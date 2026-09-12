@@ -1,9 +1,19 @@
 import { HealthResponse, PredictionResponse } from '../types';
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 export async function checkHealth(): Promise<HealthResponse> {
   const res = await fetch('/health');
   if (!res.ok) {
-    throw new Error(`Health check failed with status: ${res.status}`);
+    throw new ApiError(res.status, `Health check failed with status: ${res.status}`);
   }
   return res.json();
 }
@@ -19,7 +29,7 @@ export async function predictDisease(file: File): Promise<PredictionResponse> {
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Prediction failed with status: ${res.status}`);
+    throw new ApiError(res.status, errorData.detail || `Prediction failed with status: ${res.status}`);
   }
 
   return res.json();
