@@ -1,9 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
+import * as client from '../api/client';
+import { ApiError } from '../api/client';
+import { PredictionResponse } from '../types';
 
-describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
+vi.mock('../api/client', async () => {
+  const actual = await vi.importActual<typeof import('../api/client')>('../api/client');
+  return {
+    ...actual,
+    predictDisease: vi.fn(),
+  };
+});
+
+describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders the application shell with branding, header, and footer', () => {
     render(<App />);
     expect(screen.getByRole('banner')).toBeInTheDocument();
@@ -109,6 +124,9 @@ describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
   });
 
   it('enters predicting/loading state on Predict click and prevents duplicate submissions without faking diagnosis', () => {
+    // Return pending promise to inspect in-flight loading state
+    vi.mocked(client.predictDisease).mockReturnValue(new Promise(() => {}));
+
     render(<App />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
@@ -119,6 +137,9 @@ describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
     expect(predictBtn).toBeEnabled();
 
     fireEvent.click(predictBtn);
+
+    expect(client.predictDisease).toHaveBeenCalledTimes(1);
+    expect(client.predictDisease).toHaveBeenCalledWith(testFile);
 
     // Predict status banner is shown
     expect(screen.getByRole('status')).toBeInTheDocument();
@@ -156,8 +177,57 @@ describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
     expect(screen.getByAltText(/selected crop leaf preview/i)).toBeInTheDocument();
   });
 
-  it('transitions to model unavailable notice and allows resetting back to upload', () => {
-    vi.useFakeTimers();
+  it('successfully predicts disease on HTTP 200, displays DiagnosisResult with real backend data, and allows resetting', async () => {
+    const mockResponse: PredictionResponse = {
+      predicted_class: 'Tomato___Early_blight',
+      display_name: 'Tomato — Early Blight',
+      confidence: 0.965,
+      model_version: 'v0.1.0-prod',
+      precaution: 'Apply copper fungicides weekly. Avoid overhead watering to reduce foliar moisture.',
+      probabilities: {
+        'Tomato___Early_blight': 0.965,
+        'Tomato___healthy': 0.035,
+      },
+    };
+    vi.mocked(client.predictDisease).mockResolvedValue(mockResponse);
+
+    render(<App />);
+    const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
+
+    const testFile = new File(['leaf-bytes'], 'tomato_diseased.jpg', { type: 'image/jpeg' });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    const cropSelect = screen.getByLabelText(/crop type \(optional\)/i);
+    fireEvent.change(cropSelect, { target: { value: 'Tomato' } });
+
+    const predictBtn = screen.getByRole('button', { name: /predict disease/i });
+    fireEvent.click(predictBtn);
+
+    expect(client.predictDisease).toHaveBeenCalledWith(testFile);
+
+    // DiagnosisResult component renders with real backend data
+    expect(await screen.findByRole('region', { name: /diagnosis result summary/i })).toBeInTheDocument();
+    expect(screen.getByText('Tomato — Early Blight')).toBeInTheDocument();
+    expect(screen.getAllByText('96.5%').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('v0.1.0-prod')).toBeInTheDocument();
+    expect(screen.getByText(/technical class: tomato___early_blight/i)).toBeInTheDocument();
+    expect(screen.getByText(/apply copper fungicides weekly/i)).toBeInTheDocument();
+    expect(screen.getByText('Tomato___healthy')).toBeInTheDocument();
+    expect(screen.getByText('3.5%')).toBeInTheDocument();
+
+    // Resetting returns back to clean empty upload state
+    const resetBtn = screen.getByRole('button', { name: /upload another image/i });
+    fireEvent.click(resetBtn);
+
+    expect(screen.getByText('Upload a crop or leaf image')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /diagnosis result summary/i })).not.toBeInTheDocument();
+  });
+
+  it('renders ModelUnavailable notice on HTTP 503 and allows resetting back to upload', async () => {
+    vi.mocked(client.predictDisease).mockRejectedValue(
+      new ApiError(503, 'Model checkpoint not yet available')
+    );
+
     render(<App />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
@@ -167,24 +237,103 @@ describe('AgriSmart AI — Task 2 Upload & Diagnose Workflow', () => {
     const predictBtn = screen.getByRole('button', { name: /predict disease/i });
     fireEvent.click(predictBtn);
 
-    // Initial predicting state
-    expect(screen.getByText(/analyzing your crop image\.\.\./i)).toBeInTheDocument();
-
-    // Advance timer past boundary inside act
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    // Model unavailable notice rendered
-    expect(screen.getByText(/prediction model unavailable/i)).toBeInTheDocument();
+    // Model unavailable notice rendered without fake diagnosis
+    expect(await screen.findByText(/prediction model unavailable/i)).toBeInTheDocument();
     expect(screen.getByText(/diagnostic service is currently offline/i)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /diagnosis result summary/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/confidence score/i)).not.toBeInTheDocument();
 
     // Resetting returns to empty upload dropzone
     const resetBtn = screen.getByRole('button', { name: /try another image/i });
     fireEvent.click(resetBtn);
 
     expect(screen.getByText('Upload a crop or leaf image')).toBeInTheDocument();
-    vi.useRealTimers();
+  });
+
+  it('displays user-friendly error on HTTP 400 bad request and allows retry / image change', async () => {
+    vi.mocked(client.predictDisease).mockRejectedValue(
+      new ApiError(400, 'Invalid image dimensions or corrupt leaf photo.')
+    );
+
+    render(<App />);
+    const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
+
+    const testFile = new File(['leaf-data'], 'bad_photo.jpg', { type: 'image/jpeg' });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    const predictBtn = screen.getByRole('button', { name: /predict disease/i });
+    fireEvent.click(predictBtn);
+
+    // Shows clear user-facing error message without crashing
+    expect(await screen.findByText('Diagnosis Request Issue')).toBeInTheDocument();
+    expect(screen.getByText('Invalid image dimensions or corrupt leaf photo.')).toBeInTheDocument();
+    expect(screen.queryByText(/prediction model unavailable/i)).not.toBeInTheDocument();
+
+    // Preview remains and controls are enabled for retry or image change
+    expect(screen.getByAltText(/selected crop leaf preview/i)).toBeInTheDocument();
+    const retryBtn = screen.getByRole('button', { name: /predict disease/i });
+    expect(retryBtn).toBeEnabled();
+    expect(screen.getByRole('button', { name: /change selected image/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /remove selected image/i })).toBeEnabled();
+
+    // User retries successfully
+    vi.mocked(client.predictDisease).mockResolvedValue({
+      predicted_class: 'Apple___healthy',
+      confidence: 0.99,
+      model_version: 'v0.1.0',
+    });
+    fireEvent.click(retryBtn);
+
+    expect(await screen.findByRole('region', { name: /diagnosis result summary/i })).toBeInTheDocument();
+    expect(screen.queryByText('Diagnosis Request Issue')).not.toBeInTheDocument();
+  });
+
+  it('displays generic user-friendly error on HTTP 500 or unexpected error without exposing stack traces', async () => {
+    vi.mocked(client.predictDisease).mockRejectedValue(
+      new ApiError(500, 'Internal Server Error: Traceback (most recent call last) in torch.cuda...')
+    );
+
+    render(<App />);
+    const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
+
+    const testFile = new File(['leaf-data'], 'failing_leaf.jpg', { type: 'image/jpeg' });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    const predictBtn = screen.getByRole('button', { name: /predict disease/i });
+    fireEvent.click(predictBtn);
+
+    // Generic friendly error displayed
+    expect(await screen.findByText('Diagnosis Request Issue')).toBeInTheDocument();
+    expect(
+      screen.getByText(/unable to process diagnosis due to a server error\. please try again in a few moments\./i)
+    ).toBeInTheDocument();
+
+    // Raw technical details/stack traces are never exposed
+    expect(screen.queryByText(/traceback/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/torch\.cuda/i)).not.toBeInTheDocument();
+
+    // User can retry
+    expect(screen.getByRole('button', { name: /predict disease/i })).toBeEnabled();
+  });
+
+  it('displays user-friendly retryable error on network failure (offline/disconnect)', async () => {
+    vi.mocked(client.predictDisease).mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<App />);
+    const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
+
+    const testFile = new File(['leaf-data'], 'network_leaf.jpg', { type: 'image/jpeg' });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    const predictBtn = screen.getByRole('button', { name: /predict disease/i });
+    fireEvent.click(predictBtn);
+
+    expect(await screen.findByText('Diagnosis Request Issue')).toBeInTheDocument();
+    expect(
+      screen.getByText(/unable to process diagnosis due to a server error\. please try again in a few moments\./i)
+    ).toBeInTheDocument();
+
+    // Controls remain enabled for retry
+    expect(screen.getByRole('button', { name: /predict disease/i })).toBeEnabled();
   });
 });
-

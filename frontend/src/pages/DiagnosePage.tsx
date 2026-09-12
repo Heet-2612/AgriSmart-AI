@@ -1,8 +1,9 @@
-import { useState, useRef, ChangeEvent, DragEvent } from 'react';
+import { useState, useRef, useEffect, ChangeEvent, DragEvent } from 'react';
 import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles, ArrowRight, FileText, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
+import { predictDisease, ApiError } from '../api/client';
 import { PredictionResponse } from '../types';
 
 /** Maximum allowed image upload size: 10 MB */
@@ -109,12 +110,21 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [isModelUnavailable, setIsModelUnavailable] = useState<boolean>(false);
   const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(initialResult);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const validateFile = (file: File): { isValid: boolean; error?: string } => {
     if (!file) {
@@ -137,6 +147,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
 
   const processFile = (file: File) => {
     setValidationError(null);
+    setApiError(null);
     const { isValid, error } = validateFile(file);
 
     if (!isValid) {
@@ -198,6 +209,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
     setSelectedFile(null);
     setPreviewUrl(null);
     setValidationError(null);
+    setApiError(null);
     setIsPredicting(false);
     setIsModelUnavailable(false);
     setPredictionResult(null);
@@ -211,75 +223,62 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
     fileInputRef.current?.click();
   };
 
-  const handlePredict = () => {
+  const handlePredict = async () => {
     if (!selectedFile || isPredicting) return;
     setValidationError(null);
+    setApiError(null);
     setIsPredicting(true);
-    // ponytail: frontend state boundary for model API integration — transitions gracefully to model notice
-    setTimeout(() => {
+
+    try {
+      const result = await predictDisease(selectedFile);
+      setPredictionResult(result);
+      setIsModelUnavailable(false);
+      setApiError(null);
+    } catch (err: unknown) {
+      const status =
+        err instanceof ApiError || (typeof err === 'object' && err !== null && 'status' in err)
+          ? (err as { status: number }).status
+          : 0;
+
+      if (status === 503) {
+        setIsModelUnavailable(true);
+        setPredictionResult(null);
+        setApiError(null);
+      } else if (status === 400) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Invalid image file or parameters. Please try again with a valid crop photo.';
+        setApiError(message);
+        setIsModelUnavailable(false);
+        setPredictionResult(null);
+      } else {
+        setApiError('Unable to process diagnosis due to a server error. Please try again in a few moments.');
+        setIsModelUnavailable(false);
+        setPredictionResult(null);
+      }
+    } finally {
       setIsPredicting(false);
-      setIsModelUnavailable(true);
-    }, 400);
+    }
   };
 
   return (
     <main id="diagnose" aria-label="Plant disease diagnosis" className="flex-1 relative bg-mesh-agri overflow-hidden">
 
-      {/* ── Background Organic Leaf Accents (Positioned at far margins) ── */}
-      <div
-        className="pointer-events-none absolute -left-20 top-10 h-80 w-80 opacity-20 sm:opacity-30 select-none overflow-hidden hidden sm:block"
-        aria-hidden="true"
-      >
-        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full text-emerald-500">
-          <path
-            d="M10 190C30 130 80 80 170 30C160 120 110 170 10 190Z"
-            fill="currentColor"
-            fillOpacity="0.3"
-          />
-          <path
-            d="M20 180C50 140 90 100 160 40"
-            stroke="#059669"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeOpacity="0.4"
-          />
-        </svg>
-      </div>
-
-      <div
-        className="pointer-events-none absolute -right-20 top-40 h-80 w-80 opacity-20 sm:opacity-30 select-none overflow-hidden hidden sm:block"
-        aria-hidden="true"
-      >
-        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full text-emerald-400">
-          <path
-            d="M190 190C170 130 120 80 30 30C40 120 90 170 190 190Z"
-            fill="currentColor"
-            fillOpacity="0.25"
-          />
-          <path
-            d="M180 180C150 140 110 100 40 40"
-            stroke="#10B981"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeOpacity="0.4"
-          />
-        </svg>
-      </div>
-
       {/* ── Hero & Diagnosis Console ── */}
-      <section className="relative pt-10 pb-16 sm:pt-14 sm:pb-20">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 flex flex-col items-center text-center">
+      <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-20">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 flex flex-col items-center text-center">
 
           {/* Main Hero Heading */}
           <h1
             aria-label="AgriSmart AI — Plant Disease Diagnosis"
-            className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-[#0F172A] mb-3.5 sm:mb-4 text-center leading-[1.15]"
+            className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-3 text-center leading-tight"
           >
-            <span>AgriSmart</span> <span style={{ color: '#10B981' }}>AI</span>
+            AgriSmart <span className="text-emerald-600">AI</span>
           </h1>
 
           {/* Subtitle / Description */}
-          <p className="text-center text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-[540px] mb-9 sm:mb-11">
+          <p className="text-center text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-md sm:max-w-lg mb-8 sm:mb-10">
             Upload a crop or leaf image to detect disease and get AI-powered insights.
           </p>
 
@@ -295,9 +294,9 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
             disabled={isPredicting}
           />
 
-          {/* ── Upload & Diagnosis Card (Reference Box) ── */}
+          {/* ── Upload & Diagnosis Card ── */}
           <div
-            className="mx-auto max-w-2xl rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-9 shadow-[0_10px_35px_rgba(15,23,42,0.04)] transition-all"
+            className="w-full rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-[0_4px_25px_rgba(15,23,42,0.04)] transition-all text-left"
             role="region"
             aria-label="Diagnosis workbench"
           >
@@ -312,6 +311,21 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                 <div>
                   <strong className="font-semibold text-amber-950">Image Validation Alert</strong>
                   <p className="mt-0.5 text-amber-800">{validationError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* API Error Banner */}
+            {apiError && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/90 p-4 text-left text-sm text-red-900 shadow-xs"
+              >
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+                <div className="flex-1">
+                  <strong className="font-semibold text-red-950">Diagnosis Request Issue</strong>
+                  <p className="mt-0.5 text-red-800">{apiError}</p>
                 </div>
               </div>
             )}
@@ -333,14 +347,14 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                 onReset={handleRemove}
               />
             ) : !selectedFile ? (
-              /* State C: No file selected -> Large Mint Dashed Dropzone */
+              /* State C: No file selected -> Clean Mint Dashed Dropzone */
               <div className="space-y-6">
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={handleChangeImageClick}
-                  className={`group cursor-pointer rounded-2xl border-2 border-dashed p-8 transition-all duration-200 sm:p-12 ${
+                  className={`group cursor-pointer rounded-2xl border-2 border-dashed p-8 transition-all duration-200 sm:p-10 ${
                     isDragging
                       ? 'border-[#10B981] bg-[#ECFDF5]'
                       : 'border-[#10B981]/60 bg-[#F0FDF4]/50 hover:border-[#10B981] hover:bg-[#ECFDF5]'
@@ -355,27 +369,26 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   }}
                   aria-label="Click or drag and drop to select a crop leaf image"
                 >
-                  {/* Cloud/Upload Icon */}
+                  {/* Upload Icon */}
                   <div
-                    className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-[#10B981] transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: '#ECFDF5' }}
+                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-emerald-600 bg-emerald-100/80 transition-transform group-hover:scale-105"
                     aria-hidden="true"
                   >
-                    <Upload size={32} strokeWidth={2.2} />
+                    <Upload size={28} strokeWidth={2.2} />
                   </div>
 
-                  <h3 className="mb-1 text-lg font-bold text-[#0F172A]">
+                  <h3 className="mb-1 text-lg font-bold text-slate-900">
                     Upload Leaf Image
                   </h3>
                   <p className="sr-only">Upload a crop or leaf image</p>
                   <p className="sr-only">Use a clear photo of the affected leaf or crop for better diagnosis.</p>
                   
                   <p className="mb-2 text-sm text-slate-500">
-                    Drag & drop or <span className="font-semibold text-[#10B981] group-hover:underline">browse</span>
+                    Drag & drop or <span className="font-semibold text-emerald-600 group-hover:underline">browse</span>
                   </p>
 
                   <p className="text-xs font-medium text-slate-400">
-                    Supports JPG, JPEG, PNG
+                    Supports JPG, JPEG, PNG, WebP (up to 10 MB)
                   </p>
 
                   {/* Accessible Select Image button */}
@@ -400,7 +413,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#10B981]">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600">
                         <Leaf size={16} />
                       </div>
                       <select
@@ -408,7 +421,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                         aria-label="Crop Type (Optional)"
                         value={cropType}
                         onChange={(e) => setCropType(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 hover:border-slate-300"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-300 cursor-pointer"
                       >
                         <option value="">Select crop type</option>
                         {CROP_OPTIONS.map((c) => (
@@ -421,12 +434,12 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   </div>
 
                   {/* Diagnose Action Button */}
-                  <div className="sm:w-auto">
+                  <div className="w-full sm:w-auto">
                     <Button
                       type="button"
                       variant="primary"
                       onClick={handleChangeImageClick}
-                      className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-[#059669] hover:bg-[#047857]"
+                      className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                       aria-label="Diagnose crop"
                     >
                       <Sparkles size={16} aria-hidden="true" />
@@ -441,7 +454,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
               <div className="space-y-6 text-left">
 
                 {/* Preview Frame */}
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 p-2 sm:p-3">
                   <img
                     src={previewUrl!}
                     alt="Selected crop leaf preview"
@@ -467,7 +480,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       onClick={handleChangeImageClick}
                       disabled={isPredicting}
                       aria-label="Change selected image"
-                      className="px-3.5 py-2 text-xs rounded-lg"
+                      className="px-3.5 py-2 text-xs rounded-lg font-medium"
                     >
                       <RefreshCw size={14} aria-hidden="true" />
                       Change
@@ -478,7 +491,7 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       onClick={handleRemove}
                       disabled={isPredicting}
                       aria-label="Remove selected image"
-                      className="px-3.5 py-2 text-xs rounded-lg"
+                      className="px-3.5 py-2 text-xs rounded-lg font-medium"
                     >
                       <Trash2 size={14} aria-hidden="true" />
                       Remove
@@ -496,15 +509,16 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                       Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[#10B981]">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600">
                         <Leaf size={16} />
                       </div>
                       <select
                         id="crop-type-select"
+                        aria-label="Crop Type (Optional)"
                         value={cropType}
                         onChange={(e) => setCropType(e.target.value)}
                         disabled={isPredicting}
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm text-slate-800 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60 cursor-pointer"
                       >
                         <option value="">Select crop (optional)</option>
                         {CROP_OPTIONS.map((c) => (
@@ -517,14 +531,14 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   </div>
 
                   {!isPredicting && (
-                    <div className="sm:w-auto">
+                    <div className="w-full sm:w-auto">
                       <Button
                         type="button"
                         variant="primary"
                         onClick={handlePredict}
                         disabled={!selectedFile || isPredicting}
                         aria-label="Predict disease"
-                        className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-[#059669] hover:bg-[#047857]"
+                        className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                       >
                         <Sparkles size={16} aria-hidden="true" />
                         <span>Diagnose Crop</span>
@@ -539,10 +553,10 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
                   <div
                     role="status"
                     aria-live="polite"
-                    className="rounded-2xl border border-emerald-200 bg-[#ECFDF5] p-5 text-center shadow-xs"
+                    className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 text-center shadow-xs"
                   >
                     <div className="flex items-center justify-center gap-2.5 text-emerald-800">
-                      <Loader2 className="h-5 w-5 animate-spin text-[#10B981]" aria-hidden="true" />
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" aria-hidden="true" />
                       <span className="font-semibold text-sm">Analyzing your crop image...</span>
                     </div>
                     <p className="mt-1 text-xs text-emerald-700">
