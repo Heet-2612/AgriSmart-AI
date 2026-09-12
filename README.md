@@ -268,43 +268,67 @@ AgriSmart AI features a real-time **Weather Dashboard and Rule-Based Farm Adviso
 
 ---
 
-## Bonus Module: Sustainability Impact Score
+## Bonus Module: Rule-based Sustainability Score
 
-AgriSmart AI includes a frontend-only, deterministic **Sustainability Impact Score** module demonstrating weather-aware irrigation analytics and farm water conservation for smallholder plots.
+AgriSmart AI includes a frontend-only **Deterministic Sustainability Score** module demonstrating weather-aware irrigation analytics and farm water conservation for smallholder plots.
 
 ### Purpose
-Showcases how weather-informed irrigation choices conserve groundwater and improve farm sustainability using transparent agricultural rules.
+Showcases how weather-informed irrigation choices conserve groundwater and improve farm sustainability using transparent, deterministic agricultural rules. It does not use AI, ML, prediction models, or external API calls.
 
-### Exact Transparent Rules & Points
+### Farm Conditions & Input Parameters
+* **Target Crop Name:** Text input (default: `Tomato`). Recorded for farm context in this MVP; does not alter the score calculation.
+* **Farm Area (Hectares):** Numeric input (default: `0.1` ha, must be $> 0$).
+* **Soil Moisture (%):** Numeric input (default: `31`%, valid range: $0 – 100\%$ inclusive).
+* **Rain Probability (%):** Numeric input (default: `65`%, valid range: $0 – 100\%$ inclusive).
+* **Expected Rainfall (mm):** Numeric input (default: `8` mm, valid range: $\ge 0$).
+* **Temperature (°C):** Numeric input (default: `29`°C, finite number).
+* **Humidity (%):** Numeric input (default: `72`%, valid range: $0 – 100\%$ inclusive).
+* **Irrigation Action:** `Delay irrigation` or `Irrigate now`.
+
+### Exact Deterministic Scoring Rules & Point Boundaries
 
 #### 1. Water Efficiency (Maximum 50 points)
 * **Delay irrigation** when rain probability $\ge 60\%$ AND expected rainfall $\ge 5\text{ mm}$: **40 points**
 * **Irrigate now** under the same rain condition: **10 points**
 * **Otherwise** (standard baseline conditions): **30 points**
+* *Boundary guarantee:* $0 \le \text{waterEfficiency} \le 50$.
 
 #### 2. Weather-Smart Actions (Maximum 30 points)
-* Rain probability $\ge 60\%$: **15 points**
-* Ambient temperature between $18^\circ\text{C}$ and $34^\circ\text{C}$: **10 points**
-* Relative humidity $\le 80\%$: **5 points**
+* Rain probability $\ge 60\%$: **15 points** (otherwise 0 pts)
+* Ambient temperature between $18^\circ\text{C}$ and $34^\circ\text{C}$ inclusive: **10 points** (otherwise 0 pts)
+* Relative humidity $\le 80\%$: **5 points** (otherwise 0 pts)
+* *Boundary guarantee:* $0 \le \text{weatherSmart} \le 30$.
 
 #### 3. Soil and Crop Care (Maximum 20 points)
-* Soil moisture in healthy root-zone range ($25\%$ to $40\%$): **12 points**
+* Soil moisture in healthy root-zone range ($25\%$ to $40\%$ inclusive): **12 points** (otherwise 0 pts)
 * Remaining **8 points** are explicitly *reserved for future disease-scan integration* and are not counted.
+* *Boundary guarantee:* $0 \le \text{soilCropCare} \le 20$.
+
+#### Overall Score Boundary Guarantee
+* $\text{Total Score} = \text{waterEfficiency} + \text{weatherSmart} + \text{soilCropCare}$
+* Always guarantees: $0 \le \text{Total Score} \le 100$.
 
 ### Expected Scenario Scores
 * **Option A: Follow Recommendation (Delay Irrigation):**
   * $\text{Score} = 40 + 30 + 12 = \mathbf{82/100}$ (`Excellent`)
-  * **Water Impact:** $\mathbf{180\text{ Litres Saved}}$
+  * **Water Impact ($0.1\text{ ha}$):** $\mathbf{180\text{ Litres Saved}}$
 * **Option B: Irrigate Now:**
   * $\text{Score} = 10 + 30 + 12 = \mathbf{52/100}$ (`Needs Improvement`)
-  * **Water Impact:** $\mathbf{180\text{ Litres Unnecessary Use}}$
+  * **Water Impact ($0.1\text{ ha}$):** $\mathbf{180\text{ Litres Unnecessary Use}}$
+
+### Water Impact Heuristic & Farm Area Scaling
+* **Named Constant:** `WATER_IMPACT_LITERS_PER_HECTARE = 1800`
+* **Formula:** `180 L × (farm area in hectares / 0.1 ha)` $\equiv \text{farm area} \times 1800\text{ L/ha}$.
+* **Assumption & Disclaimer:** “This is an indicative MVP heuristic, not a scientific or universal water-footprint measurement.”
+* **$0.1\text{ ha}$ baseline scenario:** $180\text{ L} \times (0.1 / 0.1) = \mathbf{180\text{ Litres}}$ (Saved if delayed, Unnecessary use if irrigated now).
+* **Custom area scaling example ($0.5\text{ ha}$):** $180\text{ L} \times (0.5 / 0.1) = \mathbf{900\text{ Litres}}$.
 
 ### Score Classification
 * **80 – 100:** `Excellent`
 * **60 – 79:** `Good`
 * **0 – 59:** `Needs Improvement`
 
-> **Badge & Disclaimer:** *Demo / Rule-Based MVP — Not an official environmental certification.* Water impact is an estimate based on a $0.1\text{-hectare}$ Tomato crop scenario.
+> **Badge & Disclaimer:** *Deterministic Rule-Based Sustainability Score — Not an official environmental certification.* Demo estimate formula: 180 L × (farm area in hectares / 0.1 ha). This is an indicative MVP heuristic, not a scientific or universal water-footprint measurement.
 
 ---
 

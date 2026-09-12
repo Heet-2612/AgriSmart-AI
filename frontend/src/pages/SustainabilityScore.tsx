@@ -1,24 +1,124 @@
-import { useState, useId } from 'react';
+import { useState, useId, FormEvent, ChangeEvent } from 'react';
 import {
   calculateSustainabilityScore,
+  validateSustainabilityInputs,
   DEFAULT_DEMO_INPUTS,
   DEMO_DISCLAIMER_BADGE,
+  CROP_CONTEXT_NOTE,
+  WATER_IMPACT_HEURISTIC_NOTE,
   IrrigationAction,
   SustainabilityInputs,
+  SustainabilityValidationErrors,
 } from '../lib/sustainability';
 
+interface FormState {
+  crop: string;
+  farmAreaHectares: string;
+  soilMoisturePercent: string;
+  rainProbabilityPercent: string;
+  expectedRainfallMm: string;
+  temperatureCelsius: string;
+  humidityPercent: string;
+  action: IrrigationAction;
+}
+
+function inputsToFormState(inputs: SustainabilityInputs): FormState {
+  return {
+    crop: inputs.crop,
+    farmAreaHectares: String(inputs.farmAreaHectares),
+    soilMoisturePercent: String(inputs.soilMoisturePercent),
+    rainProbabilityPercent: String(inputs.rainProbabilityPercent),
+    expectedRainfallMm: String(inputs.expectedRainfallMm),
+    temperatureCelsius: String(inputs.temperatureCelsius),
+    humidityPercent: String(inputs.humidityPercent),
+    action: inputs.action,
+  };
+}
+
+function formStateToInputs(form: FormState): Partial<SustainabilityInputs> {
+  return {
+    crop: form.crop,
+    farmAreaHectares: form.farmAreaHectares.trim() === '' ? NaN : Number(form.farmAreaHectares),
+    soilMoisturePercent: form.soilMoisturePercent.trim() === '' ? NaN : Number(form.soilMoisturePercent),
+    rainProbabilityPercent: form.rainProbabilityPercent.trim() === '' ? NaN : Number(form.rainProbabilityPercent),
+    expectedRainfallMm: form.expectedRainfallMm.trim() === '' ? NaN : Number(form.expectedRainfallMm),
+    temperatureCelsius: form.temperatureCelsius.trim() === '' ? NaN : Number(form.temperatureCelsius),
+    humidityPercent: form.humidityPercent.trim() === '' ? NaN : Number(form.humidityPercent),
+    action: form.action,
+  };
+}
+
 export function SustainabilityScore() {
-  const [inputs, setInputs] = useState<SustainabilityInputs>(DEFAULT_DEMO_INPUTS);
+  // Evaluated conditions currently reflected in the score cards
+  const [evaluatedInputs, setEvaluatedInputs] = useState<SustainabilityInputs>(DEFAULT_DEMO_INPUTS);
+
+  // Form draft state that user edits
+  const [formState, setFormState] = useState<FormState>(() => inputsToFormState(DEFAULT_DEMO_INPUTS));
+  const [errors, setErrors] = useState<SustainabilityValidationErrors>({});
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
+  const [calculationSuccessMessage, setCalculationSuccessMessage] = useState<string | null>(null);
 
   // Derive score result strictly via library calculation function
-  const result = calculateSustainabilityScore(inputs);
+  const result = calculateSustainabilityScore(evaluatedInputs);
 
-  const handleActionChange = (action: IrrigationAction) => {
-    setInputs((prev) => ({ ...prev, action }));
+  const isDelay = evaluatedInputs.action === 'delay';
+
+  const handleFieldChange = (field: keyof FormState) => (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormState((prev) => ({ ...prev, [field]: value }));
+    // Clear field-specific error as user types
+    if (errors[field as keyof SustainabilityValidationErrors]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  const isDelay = inputs.action === 'delay';
+  const handleFormActionChange = (action: IrrigationAction) => {
+    setFormState((prev) => ({ ...prev, action }));
+  };
+
+  const handleCalculate = (e?: FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const parsed = formStateToInputs(formState);
+    const validationErrors = validateSustainabilityInputs(parsed);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setCalculationSuccessMessage(null);
+      return;
+    }
+
+    setErrors({});
+    const validInputs: SustainabilityInputs = {
+      crop: (parsed.crop || 'Tomato').trim(),
+      farmAreaHectares: parsed.farmAreaHectares!,
+      soilMoisturePercent: parsed.soilMoisturePercent!,
+      rainProbabilityPercent: parsed.rainProbabilityPercent!,
+      expectedRainfallMm: parsed.expectedRainfallMm!,
+      temperatureCelsius: parsed.temperatureCelsius!,
+      humidityPercent: parsed.humidityPercent!,
+      action: formState.action,
+    };
+
+    setEvaluatedInputs(validInputs);
+    setCalculationSuccessMessage('Score updated with current farm conditions!');
+    setTimeout(() => setCalculationSuccessMessage(null), 3000);
+  };
+
+  const handleResetDemo = () => {
+    setFormState(inputsToFormState(DEFAULT_DEMO_INPUTS));
+    setErrors({});
+    setEvaluatedInputs(DEFAULT_DEMO_INPUTS);
+    setCalculationSuccessMessage('Reset to default demo values.');
+    setTimeout(() => setCalculationSuccessMessage(null), 3000);
+  };
+
+  // Instant action switch from the comparison cards or quick evaluator
+  const handleDirectActionSwitch = (action: IrrigationAction) => {
+    setFormState((prev) => ({ ...prev, action }));
+    setEvaluatedInputs((prev) => ({ ...prev, action }));
+  };
 
   // Circular progress calculations for SVG gauge
   const radius = 64;
@@ -70,11 +170,386 @@ export function SustainabilityScore() {
       {/* Page Header */}
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#14532d', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
-          Sustainability Impact Score
+          Deterministic Sustainability Score
         </h2>
         <p style={{ margin: 0, color: '#4b5563', fontSize: '14.5px' }}>
-          Weather-aware irrigation intelligence & agricultural conservation analytics
+          Rule-based irrigation intelligence & agricultural water conservation analysis
         </p>
+      </div>
+
+      {/* Farm Conditions Input Form Card */}
+      <div
+        style={{
+          background: '#ffffff',
+          border: '1.5px solid #d1fae5',
+          borderRadius: '16px',
+          padding: '22px',
+          marginBottom: '26px',
+          boxShadow: '0 4px 12px rgba(22, 101, 52, 0.05)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#166534', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🌾</span>
+              <span>Farm & Microclimate Conditions</span>
+            </h3>
+            <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+              Enter your field parameters to calculate real-time deterministic score and water conservation impact.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetDemo}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: '#f8fafc',
+              color: '#334155',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>🔄</span>
+            <span>Reset Demo Values</span>
+          </button>
+        </div>
+
+        {calculationSuccessMessage && (
+          <div
+            style={{
+              padding: '10px 14px',
+              background: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              borderRadius: '8px',
+              color: '#065f46',
+              fontSize: '13px',
+              fontWeight: 600,
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>✅</span>
+            <span>{calculationSuccessMessage}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleCalculate}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '14px',
+              marginBottom: '18px',
+            }}
+          >
+            {/* Field: Crop Name */}
+            <div>
+              <label
+                htmlFor="crop-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Target Crop Name
+              </label>
+              <input
+                id="crop-input"
+                type="text"
+                value={formState.crop}
+                onChange={handleFieldChange('crop')}
+                placeholder="e.g. Tomato"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.crop ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.crop ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                Recorded for farm context — does not alter rule-based score.
+              </div>
+              {errors.crop && <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '2px' }}>{errors.crop}</div>}
+            </div>
+
+            {/* Field: Farm Area (ha) */}
+            <div>
+              <label
+                htmlFor="area-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Farm Area (Hectares)
+              </label>
+              <input
+                id="area-input"
+                type="number"
+                step="any"
+                min="0.001"
+                value={formState.farmAreaHectares}
+                onChange={handleFieldChange('farmAreaHectares')}
+                placeholder="0.1"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.farmAreaHectares ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.farmAreaHectares ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.farmAreaHectares && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.farmAreaHectares}</div>
+              )}
+            </div>
+
+            {/* Field: Soil Moisture (%) */}
+            <div>
+              <label
+                htmlFor="moisture-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Soil Moisture (0–100%)
+              </label>
+              <input
+                id="moisture-input"
+                type="number"
+                step="any"
+                min="0"
+                max="100"
+                value={formState.soilMoisturePercent}
+                onChange={handleFieldChange('soilMoisturePercent')}
+                placeholder="31"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.soilMoisturePercent ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.soilMoisturePercent ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.soilMoisturePercent && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.soilMoisturePercent}</div>
+              )}
+            </div>
+
+            {/* Field: Rain Probability (%) */}
+            <div>
+              <label
+                htmlFor="rain-prob-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Rain Probability (0–100%)
+              </label>
+              <input
+                id="rain-prob-input"
+                type="number"
+                step="any"
+                min="0"
+                max="100"
+                value={formState.rainProbabilityPercent}
+                onChange={handleFieldChange('rainProbabilityPercent')}
+                placeholder="65"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.rainProbabilityPercent ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.rainProbabilityPercent ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.rainProbabilityPercent && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.rainProbabilityPercent}</div>
+              )}
+            </div>
+
+            {/* Field: Expected Rainfall (mm) */}
+            <div>
+              <label
+                htmlFor="rainfall-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Expected Rainfall (mm)
+              </label>
+              <input
+                id="rainfall-input"
+                type="number"
+                step="any"
+                min="0"
+                value={formState.expectedRainfallMm}
+                onChange={handleFieldChange('expectedRainfallMm')}
+                placeholder="8"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.expectedRainfallMm ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.expectedRainfallMm ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.expectedRainfallMm && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.expectedRainfallMm}</div>
+              )}
+            </div>
+
+            {/* Field: Temperature (°C) */}
+            <div>
+              <label
+                htmlFor="temp-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Temperature (°C)
+              </label>
+              <input
+                id="temp-input"
+                type="number"
+                step="any"
+                value={formState.temperatureCelsius}
+                onChange={handleFieldChange('temperatureCelsius')}
+                placeholder="29"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.temperatureCelsius ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.temperatureCelsius ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.temperatureCelsius && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.temperatureCelsius}</div>
+              )}
+            </div>
+
+            {/* Field: Humidity (%) */}
+            <div>
+              <label
+                htmlFor="humidity-input"
+                style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}
+              >
+                Humidity (0–100%)
+              </label>
+              <input
+                id="humidity-input"
+                type="number"
+                step="any"
+                min="0"
+                max="100"
+                value={formState.humidityPercent}
+                onChange={handleFieldChange('humidityPercent')}
+                placeholder="72"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: errors.humidityPercent ? '1.5px solid #ef4444' : '1px solid #d1d5db',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: errors.humidityPercent ? '#fef2f2' : '#ffffff',
+                }}
+              />
+              {errors.humidityPercent && (
+                <div style={{ fontSize: '11.5px', color: '#dc2626', marginTop: '3px' }}>{errors.humidityPercent}</div>
+              )}
+            </div>
+
+            {/* Field: Irrigation Action Selector */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#374151', marginBottom: '5px' }}>
+                Irrigation Action
+              </label>
+              <div style={{ display: 'flex', gap: '8px', height: '40px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleFormActionChange('delay')}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: formState.action === 'delay' ? '2px solid #16a34a' : '1px solid #d1d5db',
+                    background: formState.action === 'delay' ? '#f0fdf4' : '#ffffff',
+                    color: formState.action === 'delay' ? '#15803d' : '#4b5563',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Delay irrigation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFormActionChange('irrigate_now')}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: formState.action === 'irrigate_now' ? '2px solid #dc2626' : '1px solid #d1d5db',
+                    background: formState.action === 'irrigate_now' ? '#fef2f2' : '#ffffff',
+                    color: formState.action === 'irrigate_now' ? '#b91c1c' : '#4b5563',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Irrigate now
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            onClick={(e) => {
+              e.preventDefault();
+              handleCalculate(e);
+            }}
+            style={{
+              width: '100%',
+              padding: '13px 20px',
+              backgroundColor: '#16a34a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>⚡</span>
+            <span>Calculate Sustainability Score</span>
+          </button>
+        </form>
       </div>
 
       {/* Current Farm Scenario Context Bar */}
@@ -91,24 +566,24 @@ export function SustainabilityScore() {
         }}
       >
         <div>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Target Crop</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🍅 {inputs.crop}</div>
+          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Active Crop</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🌱 {evaluatedInputs.crop}</div>
         </div>
         <div>
           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Farm Area</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>📐 {inputs.farmAreaHectares} Hectare</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>📐 {evaluatedInputs.farmAreaHectares} Ha</div>
         </div>
         <div>
           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Soil Moisture</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>💧 {inputs.soilMoisturePercent}%</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>💧 {evaluatedInputs.soilMoisturePercent}%</div>
         </div>
         <div>
           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Rain Forecast</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🌧️ {inputs.rainProbabilityPercent}% ({inputs.expectedRainfallMm} mm)</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🌧️ {evaluatedInputs.rainProbabilityPercent}% ({evaluatedInputs.expectedRainfallMm} mm)</div>
         </div>
         <div>
           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Temperature / Hum</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🌡️ {inputs.temperatureCelsius}°C / {inputs.humidityPercent}%</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>🌡️ {evaluatedInputs.temperatureCelsius}°C / {evaluatedInputs.humidityPercent}%</div>
         </div>
       </div>
 
@@ -149,69 +624,6 @@ export function SustainabilityScore() {
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#14532d', lineHeight: 1.4 }}>
             {result.recommendation}
           </div>
-        </div>
-      </div>
-
-      {/* Irrigation Action Selector */}
-      <div
-        style={{
-          background: '#ffffff',
-          border: '1px solid #e5e7eb',
-          borderRadius: '14px',
-          padding: '16px',
-          marginBottom: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}
-      >
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '10px' }}>
-          Select Irrigation Decision to Evaluate:
-        </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => handleActionChange('delay')}
-            style={{
-              flex: '1 1 240px',
-              padding: '12px 16px',
-              borderRadius: '10px',
-              border: isDelay ? '2px solid #16a34a' : '1px solid #d1d5db',
-              background: isDelay ? '#f0fdf4' : '#ffffff',
-              color: isDelay ? '#15803d' : '#4b5563',
-              fontWeight: 700,
-              fontSize: '14px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>✅ Follow recommendation: Delay irrigation</span>
-            {isDelay && <span style={{ fontSize: '11px', background: '#16a34a', color: '#fff', padding: '2px 8px', borderRadius: '6px' }}>Active</span>}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleActionChange('irrigate_now')}
-            style={{
-              flex: '1 1 240px',
-              padding: '12px 16px',
-              borderRadius: '10px',
-              border: !isDelay ? '2px solid #dc2626' : '1px solid #d1d5db',
-              background: !isDelay ? '#fef2f2' : '#ffffff',
-              color: !isDelay ? '#b91c1c' : '#4b5563',
-              fontWeight: 700,
-              fontSize: '14px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>⚠️ Irrigate now</span>
-            {!isDelay && <span style={{ fontSize: '11px', background: '#dc2626', color: '#fff', padding: '2px 8px', borderRadius: '6px' }}>Active</span>}
-          </button>
         </div>
       </div>
 
@@ -302,7 +714,7 @@ export function SustainabilityScore() {
             {result.scoreLabel}
           </div>
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            Current Demo Max: {result.maxCurrentScore} / 100
+            Current Max Achievable: {result.maxCurrentScore} / 100
           </div>
         </div>
 
@@ -323,13 +735,13 @@ export function SustainabilityScore() {
             <div style={{ fontSize: '12px', fontWeight: 700, color: isDelay ? '#15803d' : '#991b1b', textTransform: 'uppercase', marginBottom: '8px' }}>
               Estimated Water Impact
             </div>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: isDelay ? '#14532d' : '#7f1d1d', marginBottom: '6px' }}>
-              {isDelay ? '💧 +180 Litres Saved' : '⚠️ 180 Litres Unnecessary Use'}
+            <div style={{ fontSize: '26px', fontWeight: 800, color: isDelay ? '#14532d' : '#7f1d1d', marginBottom: '6px' }}>
+              {isDelay ? `💧 +${result.waterImpact.litres} Litres Saved` : `⚠️ ${result.waterImpact.litres} Litres Unnecessary Use`}
             </div>
             <p style={{ fontSize: '13.5px', color: isDelay ? '#166534' : '#991b1b', margin: '0 0 12px 0', lineHeight: 1.45 }}>
               {isDelay
-                ? 'Delaying irrigation leverages forecasted 8 mm rain, conserving critical groundwater reserves for your 0.1-hectare plot.'
-                : 'Irrigating immediately before 8 mm forecasted rainfall causes saturation, surface runoff, and avoidable water expense.'}
+                ? `Delaying irrigation leverages forecasted ${evaluatedInputs.expectedRainfallMm} mm rain, conserving critical water reserves for your ${evaluatedInputs.farmAreaHectares}-hectare plot.`
+                : `Irrigating immediately before ${evaluatedInputs.expectedRainfallMm} mm forecasted rainfall causes saturation, surface runoff, and avoidable water expense.`}
             </p>
           </div>
           <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '10px' }}>
@@ -479,7 +891,7 @@ export function SustainabilityScore() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
           {/* Scenario A: Follow Recommendation */}
           <div
-            onClick={() => handleActionChange('delay')}
+            onClick={() => handleDirectActionSwitch('delay')}
             style={{
               border: isDelay ? '2px solid #16a34a' : '1px solid #e5e7eb',
               borderRadius: '12px',
@@ -508,7 +920,7 @@ export function SustainabilityScore() {
               </span>
             )}
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '4px' }}>
-              Option A: Follow Recommendation
+              Option A: Delay Irrigation
             </div>
             <div style={{ fontSize: '12px', color: '#4b5563', marginBottom: '10px' }}>
               Delay irrigation for 24h
@@ -528,7 +940,7 @@ export function SustainabilityScore() {
 
           {/* Scenario B: Irrigate Now */}
           <div
-            onClick={() => handleActionChange('irrigate_now')}
+            onClick={() => handleDirectActionSwitch('irrigate_now')}
             style={{
               border: !isDelay ? '2px solid #dc2626' : '1px solid #e5e7eb',
               borderRadius: '12px',
@@ -560,7 +972,7 @@ export function SustainabilityScore() {
               Option B: Irrigate Now
             </div>
             <div style={{ fontSize: '12px', color: '#4b5563', marginBottom: '10px' }}>
-              Irrigate immediately despite forecasted rain
+              Irrigate immediately
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
               <span style={{ fontSize: '24px', fontWeight: 800, color: '#b91c1c' }}>
@@ -615,7 +1027,7 @@ export function SustainabilityScore() {
         {isHowItWorksOpen && (
           <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '14px', fontSize: '13px', color: '#334155', lineHeight: 1.6 }}>
             <p style={{ margin: '0 0 12px 0' }}>
-              The <strong>Sustainability Impact Score</strong> uses transparent, deterministic agricultural rules based on microclimate forecasts and soil physics:
+              The <strong>Deterministic Sustainability Score</strong> uses transparent, deterministic agricultural rules based on microclimate forecasts and soil physics:
             </p>
 
             <div style={{ marginBottom: '12px' }}>
@@ -623,7 +1035,7 @@ export function SustainabilityScore() {
               <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
                 <li>Delay irrigation when rain probability ≥ 60% AND expected rainfall ≥ 5 mm: <strong>40 points</strong>.</li>
                 <li>Irrigate now under the same condition: <strong>10 points</strong>.</li>
-                <li>Otherwise: <strong>30 points</strong>.</li>
+                <li>Otherwise (standard baseline conditions): <strong>30 points</strong>.</li>
               </ul>
             </div>
 
@@ -641,6 +1053,21 @@ export function SustainabilityScore() {
               <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
                 <li>Soil moisture 25% to 40%: <strong>12 points</strong>.</li>
                 <li>The remaining <strong>8 points</strong> are explicitly reserved for future disease-scan integration and are not counted.</li>
+                <li><em>{CROP_CONTEXT_NOTE}</em></li>
+              </ul>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <strong>4. Water Impact Estimation:</strong>
+              <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                <li>
+                  Demo estimate formula: 180 L × (farm area in hectares / 0.1 ha).
+                </li>
+                <li>
+                  <em>{WATER_IMPACT_HEURISTIC_NOTE}</em>
+                </li>
+                <li>Delaying irrigation: Calculates estimated litres saved by utilizing forecasted rainfall.</li>
+                <li>Irrigating now: Calculates estimated litres of unnecessary water application risking runoff and saturation.</li>
               </ul>
             </div>
 
