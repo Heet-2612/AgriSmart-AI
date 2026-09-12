@@ -11,6 +11,10 @@ class PredictionResponse(BaseModel):
     display_name: Optional[str] = None
     precaution: Optional[str] = None
     probabilities: Optional[Dict[str, float]] = None
+    pipeline: Optional[str] = None
+    leaf_detected: Optional[bool] = None
+    roi_count: Optional[int] = None
+    fallback_used: Optional[bool] = None
 
 class ErrorResponse(BaseModel):
     detail: str

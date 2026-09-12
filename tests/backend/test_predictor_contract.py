@@ -100,6 +100,10 @@ def test_successful_prediction_flow(test_db_session):
             confidence=0.9823,
             probabilities={"Tomato___Early_blight": 0.9823, "Tomato___healthy": 0.0177},
             model_version="E5_YOLOv8n_E4",
+            pipeline="leaf_detection_multi_roi",
+            leaf_detected=True,
+            roi_count=3,
+            fallback_used=False,
         )
     )
 
@@ -133,6 +137,10 @@ def test_successful_prediction_flow(test_db_session):
         assert data["display_name"] == "Tomato Early Blight"
         assert data["precaution"] == "Remove infected lower leaves and apply copper-based fungicide."
         assert data["probabilities"] == {"Tomato___Early_blight": 0.9823, "Tomato___healthy": 0.0177}
+        assert data["pipeline"] == "leaf_detection_multi_roi"
+        assert data["leaf_detected"] is True
+        assert data["roi_count"] == 3
+        assert data["fallback_used"] is False
 
         # Predictor invocation checks
         assert len(test_predictor.received_paths) == 1
@@ -195,6 +203,12 @@ def test_dict_output_normalization(test_db_session):
         # Verify fallback display_name formatted cleanly from canonical class
         assert data["display_name"] == "Corn — Common Rust"
         assert data["precaution"] is None
+        
+        # Verify diagnostic fields default to None when absent
+        assert data.get("pipeline") is None
+        assert data.get("leaf_detected") is None
+        assert data.get("roi_count") is None
+        assert data.get("fallback_used") is None
     finally:
         app.dependency_overrides.clear()
         import asyncio

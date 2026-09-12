@@ -116,6 +116,10 @@ async def process_prediction(
             display_name=metadata.display_name,
             precaution=metadata.precaution,
             probabilities=prediction_output.probabilities,
+            pipeline=prediction_output.pipeline,
+            leaf_detected=prediction_output.leaf_detected,
+            roi_count=prediction_output.roi_count,
+            fallback_used=prediction_output.fallback_used,
         )
 
     finally:

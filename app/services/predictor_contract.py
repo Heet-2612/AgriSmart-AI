@@ -13,6 +13,11 @@ class PredictionOutput:
     probabilities: Dict[str, float]
     model_version: str
 
+    pipeline: Optional[str] = None
+    leaf_detected: Optional[bool] = None
+    roi_count: Optional[int] = None
+    fallback_used: Optional[bool] = None
+
 
 @runtime_checkable
 class PredictorProtocol(Protocol):
@@ -36,6 +41,10 @@ def normalize_prediction_output(raw_output: Any) -> PredictionOutput:
             confidence=float(raw_output["confidence"]),
             probabilities=dict(raw_output.get("probabilities", {})),
             model_version=str(raw_output.get("model_version", settings.MODEL_VERSION)),
+            pipeline=raw_output.get("pipeline"),
+            leaf_detected=raw_output.get("leaf_detected"),
+            roi_count=raw_output.get("roi_count"),
+            fallback_used=raw_output.get("fallback_used"),
         )
     raise ValueError(f"Unsupported predictor output format: {type(raw_output)}")
 
