@@ -119,9 +119,23 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
     # Try Gemini first
     if gemini:
         try:
+            contents = []
+            if context.history:
+                for msg in context.history:
+                    role = "model" if msg.role == "assistant" else "user"
+                    if contents and contents[-1].role == role:
+                        contents[-1].parts.append(genai_types.Part.from_text(text=f"\n\n{msg.content}"))
+                    else:
+                        contents.append(genai_types.Content(role=role, parts=[genai_types.Part.from_text(text=msg.content)]))
+            
+            if contents and contents[-1].role == "user":
+                contents[-1].parts.append(genai_types.Part.from_text(text=f"\n\n{user_prompt}"))
+            else:
+                contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_prompt)]))
+
             response = gemini.models.generate_content(
                 model=settings.GEMINI_MODEL,
-                contents=user_prompt,
+                contents=contents,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt
                 )
@@ -151,12 +165,15 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
     # Fallback to Groq
     if groq and gemini_failed:
         try:
+            messages = [{"role": "system", "content": system_prompt}]
+            if context.history:
+                for msg in context.history:
+                    messages.append({"role": msg.role, "content": msg.content})
+            messages.append({"role": "user", "content": user_prompt})
+
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
+                messages=messages,
                 max_tokens=1024,
                 temperature=0.3
             )

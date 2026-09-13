@@ -1,7 +1,25 @@
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, field_validator, ValidationInfo, EmailStr
 from datetime import datetime
 from uuid import UUID
+
+class UserRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 class HealthResponse(BaseModel):
     status: str = "ok"
@@ -60,6 +78,11 @@ class WeatherContext(BaseModel):
     humidity: Optional[float] = None
 
 
+class ChatHistoryMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str
+
+
 class ChatContext(BaseModel):
     predicted_class: str
     confidence: float = Field(..., ge=0.0, le=1.0)
@@ -74,6 +97,7 @@ class ChatContext(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     session_id: UUID
     language: Optional[str] = Field("en")
+    history: list[ChatHistoryMessage] = Field(default_factory=list)
 
     @field_validator("question")
     @classmethod
@@ -138,3 +162,18 @@ class ChatRequest(BaseModel):
         if v is not None and v not in ("en", "hi", "gu"):
             raise ValueError("unsupported language code")
         return v
+
+class ChatSessionResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
