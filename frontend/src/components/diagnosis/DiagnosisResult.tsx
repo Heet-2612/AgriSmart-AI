@@ -1,4 +1,4 @@
-import { CheckCircle2, ShieldAlert, BarChart3, RefreshCw, Leaf, Tag } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, BarChart3, RefreshCw, Leaf, Tag, Sprout } from 'lucide-react';
 import { Button } from '../Button';
 import { PredictionResponse } from '../../types';
 
@@ -8,6 +8,7 @@ interface DiagnosisResultProps {
   fileName?: string;
   cropType?: string;
   onReset: () => void;
+  onPlanRotation?: () => void;
 }
 
 export function DiagnosisResult({
@@ -16,6 +17,7 @@ export function DiagnosisResult({
   fileName,
   cropType,
   onReset,
+  onPlanRotation,
 }: DiagnosisResultProps) {
   const displayName = result.display_name?.trim() || result.predicted_class || 'Unknown Condition';
   const confidencePercent =
@@ -179,6 +181,18 @@ export function DiagnosisResult({
           <RefreshCw size={16} aria-hidden="true" />
           <span>Upload Another Image</span>
         </Button>
+        {onPlanRotation && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onPlanRotation}
+            className="w-full sm:w-auto py-3 px-6 text-sm font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer"
+            aria-label="Plan crop rotation for this field"
+          >
+            <Sprout size={16} className="text-emerald-600" aria-hidden="true" />
+            <span>Plan Crop Rotation for this Field</span>
+          </Button>
+        )}
       </div>
 
     </div>

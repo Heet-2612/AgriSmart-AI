@@ -100,13 +100,17 @@ function Footer() {
 
 export default function App() {
   const [activeView, setActiveView] = useState<'home' | 'crop-recommendation'>('home');
+  const [suggestedCrop, setSuggestedCrop] = useState<string>('');
 
   const handleNavigateHome = () => {
     setActiveView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenCropRecommendation = () => {
+  const handleOpenCropRecommendation = (crop?: string) => {
+    if (crop) {
+      setSuggestedCrop(crop);
+    }
     setActiveView('crop-recommendation');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -121,7 +125,7 @@ export default function App() {
         {activeView === 'home' ? (
           <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
         ) : (
-          <CropRecommendationPage onBack={handleNavigateHome} />
+          <CropRecommendationPage onBack={handleNavigateHome} initialPreviousCrop={suggestedCrop} />
         )}
       </ErrorBoundary>
       <Footer />

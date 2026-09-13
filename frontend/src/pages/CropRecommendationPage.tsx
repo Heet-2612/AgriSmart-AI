@@ -50,6 +50,7 @@ export type FormErrors = Partial<Record<keyof CropRecommendationFormData, string
 interface CropRecommendationPageProps {
   onBack: () => void;
   onSubmit?: (data: CropRecommendationFormData) => void;
+  initialPreviousCrop?: string;
 }
 
 const INITIAL_FORM_DATA: CropRecommendationFormData = {
@@ -80,8 +81,11 @@ export function getConfidencePercent(conf: unknown): number {
   return Math.min(100, Math.max(0, percent));
 }
 
-export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationPageProps) {
-  const [formData, setFormData] = useState<CropRecommendationFormData>(INITIAL_FORM_DATA);
+export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop }: CropRecommendationPageProps) {
+  const [formData, setFormData] = useState<CropRecommendationFormData>(() => ({
+    ...INITIAL_FORM_DATA,
+    previous_crop: initialPreviousCrop || '',
+  }));
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);

@@ -104,8 +104,25 @@ function formatFileSize(bytes: number): string {
 
 interface DiagnosePageProps {
   initialResult?: PredictionResponse | null;
-  onOpenCropRecommendation?: () => void;
+  onOpenCropRecommendation?: (suggestedCrop?: string) => void;
 }
+function getRotationCropForDiagnosis(predictedClass?: string, userCrop?: string): string {
+  if (userCrop && userCrop.trim()) {
+    const c = userCrop.toLowerCase();
+    if (c.includes('corn') || c.includes('maize')) return 'maize';
+    if (c.includes('rice')) return 'rice';
+    if (c.includes('wheat')) return 'wheat';
+    if (c.includes('potato')) return 'wheat';
+    if (c.includes('tomato')) return 'rice';
+  }
+  if (!predictedClass) return 'wheat';
+  const lower = predictedClass.toLowerCase();
+  if (lower.includes('potato')) return 'wheat';
+  if (lower.includes('corn')) return 'maize';
+  if (lower.includes('tomato')) return 'rice';
+  return 'wheat';
+}
+
 
 export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }: DiagnosePageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -340,6 +357,10 @@ export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }:
                 fileName={selectedFile?.name}
                 cropType={cropType}
                 onReset={handleRemove}
+                onPlanRotation={() => {
+                  const crop = getRotationCropForDiagnosis(predictionResult?.predicted_class, cropType);
+                  onOpenCropRecommendation?.(crop);
+                }}
               />
             ) : isModelUnavailable ? (
               /* State B: Model Unavailable Notice */
