@@ -18,6 +18,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '../components/Button';
+import { SearchableSelect } from '../components/SearchableSelect';
+import {
+  INDIAN_STATES,
+  getDistrictsForState,
+  searchStates,
+  searchDistricts,
+  isValidDistrictForState,
+} from '../data/indianLocations';
 import { recommendCrop, getWeather, getSeasonalClimate, ApiError } from '../api/client';
 import { CropRecommendationRequest, CropRecommendationResponse, WeatherResponse } from '../types';
 
@@ -120,6 +128,91 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
   const [weatherInfo, setWeatherInfo] = useState<WeatherResponse | null>(null);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+  const handleStateChange = async (newState: string) => {
+    // If state changed, check if previous district still belongs to new state
+    const validDistricts = getDistrictsForState(newState);
+    const districtStillValid = validDistricts.some(
+      (d) => d.toLowerCase() === formData.district.trim().toLowerCase()
+    );
+    const updatedDistrict = districtStillValid ? formData.district : '';
+
+    setFormData((prev) => ({
+      ...prev,
+      state: newState,
+      district: updatedDistrict,
+    }));
+
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (newState.trim()) delete next.state;
+      if (!districtStillValid && prev.district) delete next.district;
+      return next;
+    });
+
+    // If updatedDistrict is present, refresh seasonal climate
+    if (newState.trim() && updatedDistrict) {
+      try {
+        const climate = await getSeasonalClimate(newState, updatedDistrict, selectedSeason);
+        if (climate && climate.temperature_mean !== undefined) {
+          setFormData((prev) => ({
+            ...prev,
+            temperature: String(climate.temperature_mean),
+            humidity: String(climate.humidity_mean),
+            rainfall: String(climate.rainfall_normal),
+            soil_type: prev.soil_type || climate.soil_type_default || '',
+          }));
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.temperature;
+            delete next.humidity;
+            delete next.rainfall;
+            return next;
+          });
+        }
+      } catch {
+        // Unmapped state/district
+      }
+    }
+  };
+
+  const handleDistrictChange = async (newDistrict: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      district: newDistrict,
+    }));
+
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (newDistrict.trim()) delete next.district;
+      return next;
+    });
+
+    const st = formData.state.trim();
+    if (st && newDistrict.trim()) {
+      try {
+        const climate = await getSeasonalClimate(st, newDistrict, selectedSeason);
+        if (climate && climate.temperature_mean !== undefined) {
+          setFormData((prev) => ({
+            ...prev,
+            temperature: String(climate.temperature_mean),
+            humidity: String(climate.humidity_mean),
+            rainfall: String(climate.rainfall_normal),
+            soil_type: prev.soil_type || climate.soil_type_default || '',
+          }));
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.temperature;
+            delete next.humidity;
+            delete next.rainfall;
+            return next;
+          });
+        }
+      } catch {
+        // Unmapped state/district
+      }
+    }
+  };
+
   const handleSeasonChange = async (newSeason: string) => {
     setSelectedSeason(newSeason);
     const st = formData.state.trim();
@@ -127,20 +220,22 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     if (st) {
       try {
         const climate = await getSeasonalClimate(st, dt, newSeason);
-        setFormData((prev) => ({
-          ...prev,
-          temperature: String(climate.temperature_mean),
-          humidity: String(climate.humidity_mean),
-          rainfall: String(climate.rainfall_normal),
-          soil_type: prev.soil_type || climate.soil_type_default || '',
-        }));
-        setErrors((prev) => {
-          const next = { ...prev };
-          delete next.temperature;
-          delete next.humidity;
-          delete next.rainfall;
-          return next;
-        });
+        if (climate && climate.temperature_mean !== undefined) {
+          setFormData((prev) => ({
+            ...prev,
+            temperature: String(climate.temperature_mean),
+            humidity: String(climate.humidity_mean),
+            rainfall: String(climate.rainfall_normal),
+            soil_type: prev.soil_type || climate.soil_type_default || '',
+          }));
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.temperature;
+            delete next.humidity;
+            delete next.rainfall;
+            return next;
+          });
+        }
       } catch {
         // If climate is unmapped for state, keep existing values
       }
@@ -241,6 +336,11 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     // 2. District
     if (!formData.district.trim()) {
       newErrors.district = 'District is required.';
+    } else if (
+      formData.state.trim() &&
+      !isValidDistrictForState(formData.state, formData.district)
+    ) {
+      newErrors.district = `Selected district does not belong to ${formData.state}.`;
     }
 
     // 3. Temperature (-10°C to 60°C)
@@ -469,79 +569,40 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
 
-                {/* State Field */}
-                <div>
-                  <label
-                    htmlFor="state-input"
-                    className="block text-xs font-semibold text-slate-700 mb-1.5"
-                  >
-                    State <span className="text-red-500" aria-hidden="true">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      ref={stateRef}
-                      id="state-input"
-                      name="state"
-                      type="text"
-                      required
-                      disabled={isSubmitting}
-                      value={formData.state}
-                      onChange={handleChange}
-                      placeholder="e.g. Gujarat"
-                      aria-required="true"
-                      aria-invalid={!!errors.state}
-                      aria-describedby={errors.state ? 'state-error' : undefined}
-                      className={`w-full rounded-xl border bg-white py-2.5 px-3.5 text-sm text-slate-800 transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:bg-slate-100 disabled:cursor-not-allowed ${
-                        errors.state
-                          ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                          : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 hover:border-slate-300'
-                      }`}
-                    />
-                  </div>
-                  {errors.state && (
-                    <p id="state-error" role="alert" className="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                      <AlertCircle size={13} aria-hidden="true" />
-                      <span>{errors.state}</span>
-                    </p>
-                  )}
-                </div>
+                {/* State Searchable Field */}
+                <SearchableSelect
+                  ref={stateRef}
+                  id="state-input"
+                  name="state"
+                  label="State"
+                  value={formData.state}
+                  options={INDIAN_STATES}
+                  filterFn={(_opts, q) => searchStates(q)}
+                  onChange={handleStateChange}
+                  disabled={isSubmitting}
+                  required
+                  placeholder="Type to search state (e.g. Gujarat)..."
+                  error={errors.state}
+                  noOptionsMessage="No matching Indian state found"
+                />
 
-                {/* District Field */}
-                <div>
-                  <label
-                    htmlFor="district-input"
-                    className="block text-xs font-semibold text-slate-700 mb-1.5"
-                  >
-                    District <span className="text-red-500" aria-hidden="true">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      ref={districtRef}
-                      id="district-input"
-                      name="district"
-                      type="text"
-                      required
-                      disabled={isSubmitting}
-                      value={formData.district}
-                      onChange={handleChange}
-                      placeholder="e.g. Ahmedabad"
-                      aria-required="true"
-                      aria-invalid={!!errors.district}
-                      aria-describedby={errors.district ? 'district-error' : undefined}
-                      className={`w-full rounded-xl border bg-white py-2.5 px-3.5 text-sm text-slate-800 transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:bg-slate-100 disabled:cursor-not-allowed ${
-                        errors.district
-                          ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                          : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 hover:border-slate-300'
-                      }`}
-                    />
-                  </div>
-                  {errors.district && (
-                    <p id="district-error" role="alert" className="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                      <AlertCircle size={13} aria-hidden="true" />
-                      <span>{errors.district}</span>
-                    </p>
-                  )}
-                </div>
+                {/* District Searchable Field */}
+                <SearchableSelect
+                  ref={districtRef}
+                  id="district-input"
+                  name="district"
+                  label="District"
+                  value={formData.district}
+                  options={getDistrictsForState(formData.state)}
+                  filterFn={(_opts, q) => searchDistricts(formData.state, q)}
+                  onChange={handleDistrictChange}
+                  disabled={isSubmitting || !formData.state.trim()}
+                  disabledPlaceholder="Select state first"
+                  required
+                  placeholder="Type to search district (e.g. Ahmedabad)..."
+                  error={errors.district}
+                  noOptionsMessage="No matching district found for selected state"
+                />
 
                 {/* Target Crop Season Field */}
                 <div>
