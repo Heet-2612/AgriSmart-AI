@@ -65,4 +65,3 @@ export async function recommendCrop(
 }
 
 export const recommendCrops = recommendCrop;
-

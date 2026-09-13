@@ -13,7 +13,7 @@ export function BonusFeaturesSection({ onSelectCropRecommendation }: BonusFeatur
       aria-label="Bonus Features"
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        
+
         {/* Section Header */}
         <div className="mb-10 text-center sm:text-left">
           {/* Green Pill Badge */}

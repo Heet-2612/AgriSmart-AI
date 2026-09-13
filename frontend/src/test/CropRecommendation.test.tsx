@@ -722,4 +722,3 @@ describe('Crop Recommendation API Integration — Step 4', () => {
     expect(within(resultSection).getByText(realApiResponse.explanation!)).toBeInTheDocument();
   });
 });
-
