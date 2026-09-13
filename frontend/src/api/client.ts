@@ -4,6 +4,7 @@ import {
   CropRecommendationRequest,
   CropRecommendationResponse,
   WeatherResponse,
+  SeasonalClimate,
 } from '../types';
 
 export class ApiError extends Error {
@@ -82,6 +83,25 @@ export async function getWeather(location: string): Promise<WeatherResponse> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
     const message = errorData?.detail || `Weather retrieval failed with status: ${res.status}`;
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
+export async function getSeasonalClimate(
+  state: string,
+  district?: string,
+  season?: string
+): Promise<SeasonalClimate> {
+  const params = new URLSearchParams({ state: state.trim() });
+  if (district?.trim()) params.append('district', district.trim());
+  if (season?.trim()) params.append('season', season.trim());
+
+  const res = await fetch(`/api/seasonal-climate?${params.toString()}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errorData?.detail || `Seasonal climate retrieval failed with status: ${res.status}`;
     throw new ApiError(res.status, message);
   }
 

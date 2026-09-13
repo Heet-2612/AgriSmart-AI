@@ -29,6 +29,7 @@ class CropRecommendationRequest(BaseModel):
     rainfall: float = Field(..., ge=0.0, le=5000.0)
     soil_type: str
     previous_crop: str
+    season: Optional[str] = None
     top_k: int = Field(default=3, ge=1, le=10)
 
 class RankedCropRecommendation(BaseModel):

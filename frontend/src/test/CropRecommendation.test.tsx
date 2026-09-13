@@ -15,6 +15,7 @@ vi.mock('../api/client', async () => {
     predictDisease: vi.fn(),
     recommendCrop: vi.fn(),
     getWeather: vi.fn(),
+    getSeasonalClimate: vi.fn(),
   };
 });
 
@@ -839,5 +840,42 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
     fireEvent.change(tempInput, { target: { value: '30' } });
     expect((tempInput as HTMLInputElement).value).toBe('30');
   });
+
+  it('updates seasonal climate values when farmer explicitly changes the crop season', async () => {
+    const mockRabiClimate = {
+      season: 'Rabi',
+      region: 'West',
+      temperature_mean: 22.0,
+      humidity_mean: 45.0,
+      rainfall_normal: 23.4,
+      soil_type_default: 'alluvial',
+    };
+
+    vi.mocked(client.getSeasonalClimate).mockResolvedValueOnce(mockRabiClimate);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    // Enter Gujarat state
+    fireEvent.change(screen.getByLabelText(/state/i), { target: { value: 'Gujarat' } });
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'Ahmedabad' } });
+
+    // Explicitly select Rabi season
+    const seasonSelect = screen.getByLabelText(/target crop season/i);
+    fireEvent.change(seasonSelect, { target: { value: 'Rabi' } });
+
+    await waitFor(() => {
+      expect(client.getSeasonalClimate).toHaveBeenCalledWith('Gujarat', 'Ahmedabad', 'Rabi');
+    });
+
+    const tempInput = screen.getByLabelText(/temperature/i) as HTMLInputElement;
+    const humInput = screen.getByLabelText(/humidity/i) as HTMLInputElement;
+    const rainInput = screen.getByLabelText(/rainfall/i) as HTMLInputElement;
+
+    // Environmental fields receive verified Rabi seasonal climate normals (22°C, 45%, 23.4mm)
+    expect(tempInput.value).toBe('22');
+    expect(humInput.value).toBe('45');
+    expect(rainInput.value).toBe('23.4');
+  });
 });
+
 

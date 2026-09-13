@@ -30,6 +30,7 @@ export interface CropRecommendationRequest {
   rainfall: number;
   soil_type: string;
   previous_crop: string;
+  season?: string;
 }
 
 export interface CropRecommendationResponse {

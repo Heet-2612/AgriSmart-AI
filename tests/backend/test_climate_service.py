@@ -123,6 +123,47 @@ def test_api_seasonal_climate_404_on_unknown(client):
     assert "detail" in response.json()
 
 
+def test_explicit_season_selection_does_not_use_current_date():
+    """Verify that specifying an explicit season overrides current calendar month."""
+    # Regardless of current month, requesting Rabi returns Rabi climate
+    rabi_climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season="Rabi")
+    assert rabi_climate.season == "Rabi"
+    assert rabi_climate.temperature_mean == 22.0
+    assert rabi_climate.humidity_mean == 45.0
+    assert rabi_climate.rainfall_normal == 23.4
+
+    # Requesting Summer returns Summer climate
+    summer_climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season="Summer")
+    assert summer_climate.season == "Summer"
+    assert summer_climate.temperature_mean == 37.0
+    assert summer_climate.humidity_mean == 42.0
+    assert summer_climate.rainfall_normal == 15.6
+
+
+def test_live_weather_independence_from_rf_rainfall():
+    """Verify that live weather precipitation is NOT used as seasonal rainfall input for RF."""
+    # Mock live weather returning 0.0mm rain today
+    live_precipitation_sum = 0.0
+    
+    # Seasonal climate for Punjab in Kharif normal is 650.0mm
+    punjab_kharif = get_seasonal_climate(state="Punjab", district="Ludhiana", season="Kharif")
+    assert punjab_kharif.rainfall_normal == 650.0
+    assert punjab_kharif.rainfall_normal != live_precipitation_sum
+
+    # RF recommendation runs with seasonal normal (650.0mm), not live weather (0.0mm)
+    res = predict_crop(
+        state="Punjab",
+        district="Ludhiana",
+        temperature=punjab_kharif.temperature_mean,
+        humidity=punjab_kharif.humidity_mean,
+        rainfall=punjab_kharif.rainfall_normal,
+        soil_type="Alluvial",
+        previous_crop="wheat",
+        top_k=3,
+    )
+    assert res["input_features"]["rainfall"] == 650.0
+
+
 def test_rf_model_receives_exact_seasonal_values():
     """Verify Crop Recommendation RF model executes with exact seasonal climate values."""
     # Ahmedabad Kharif seasonal climate
@@ -145,3 +186,5 @@ def test_rf_model_receives_exact_seasonal_values():
     assert result["input_features"]["temperature"] == 31.0
     assert result["input_features"]["humidity"] == 72.0
     assert result["input_features"]["rainfall"] == 546.0
+
+

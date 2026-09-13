@@ -18,7 +18,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { recommendCrop, getWeather, ApiError } from '../api/client';
+import { recommendCrop, getWeather, getSeasonalClimate, ApiError } from '../api/client';
 import { CropRecommendationRequest, CropRecommendationResponse, WeatherResponse } from '../types';
 
 
@@ -35,6 +35,12 @@ export const SOIL_TYPES = [
   { value: 'saline', label: 'Saline Soil' },
   { value: 'arid', label: 'Arid / Desert Soil' },
   { value: 'unknown', label: 'Unknown / Other' },
+] as const;
+
+export const CROP_SEASONS = [
+  { value: 'Kharif', label: 'Kharif (Monsoon Season / Autumn Harvest)' },
+  { value: 'Rabi', label: 'Rabi (Winter Season / Spring Harvest)' },
+  { value: 'Summer', label: 'Summer / Zaid (Short Summer Season)' },
 ] as const;
 
 export interface CropRecommendationFormData {
@@ -84,6 +90,7 @@ export function getConfidencePercent(conf: unknown): number {
 
 export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationPageProps) {
   const [formData, setFormData] = useState<CropRecommendationFormData>(INITIAL_FORM_DATA);
+  const [selectedSeason, setSelectedSeason] = useState<string>('Kharif');
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -113,6 +120,33 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
   const [weatherInfo, setWeatherInfo] = useState<WeatherResponse | null>(null);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+  const handleSeasonChange = async (newSeason: string) => {
+    setSelectedSeason(newSeason);
+    const st = formData.state.trim();
+    const dt = formData.district.trim();
+    if (st) {
+      try {
+        const climate = await getSeasonalClimate(st, dt, newSeason);
+        setFormData((prev) => ({
+          ...prev,
+          temperature: String(climate.temperature_mean),
+          humidity: String(climate.humidity_mean),
+          rainfall: String(climate.rainfall_normal),
+          soil_type: prev.soil_type || climate.soil_type_default || '',
+        }));
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.temperature;
+          delete next.humidity;
+          delete next.rainfall;
+          return next;
+        });
+      } catch {
+        // If climate is unmapped for state, keep existing values
+      }
+    }
+  };
+
   const handleFetchWeather = async () => {
     const query = formData.district.trim() || formData.state.trim();
     if (!query) {
@@ -128,13 +162,14 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
       setWeatherInfo(weather);
 
       // Auto-populate environmental fields with verified seasonal climate normals
-      if (weather.climate) {
+      const climateData = weather.climate;
+      if (climateData) {
         setFormData((prev) => ({
           ...prev,
-          temperature: String(weather.climate?.temperature_mean ?? prev.temperature),
-          humidity: String(weather.climate?.humidity_mean ?? prev.humidity),
-          rainfall: String(weather.climate?.rainfall_normal ?? prev.rainfall),
-          soil_type: prev.soil_type || weather.climate?.soil_type_default || '',
+          temperature: String(climateData?.temperature_mean ?? prev.temperature),
+          humidity: String(climateData?.humidity_mean ?? prev.humidity),
+          rainfall: String(climateData?.rainfall_normal ?? prev.rainfall),
+          soil_type: prev.soil_type || climateData?.soil_type_default || '',
           state: prev.state || weather.location.state || '',
           district: prev.district || weather.location.district || weather.location.name || '',
         }));
@@ -149,7 +184,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
       // Clear field errors for populated fields
       setErrors((prev) => {
         const next = { ...prev };
-        if (weather.climate) {
+        if (climateData) {
           delete next.temperature;
           delete next.humidity;
           delete next.rainfall;
@@ -431,7 +466,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                 Regional geography enables accurate local agro-climatic pattern analysis.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
 
                 {/* State Field */}
                 <div>
@@ -505,6 +540,33 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                       <span>{errors.district}</span>
                     </p>
                   )}
+                </div>
+
+                {/* Target Crop Season Field */}
+                <div>
+                  <label
+                    htmlFor="season-select"
+                    className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  >
+                    Target Crop Season <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="season-select"
+                      name="season"
+                      value={selectedSeason}
+                      disabled={isSubmitting}
+                      onChange={(e) => handleSeasonChange(e.target.value)}
+                      aria-label="Target Crop Season"
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3.5 text-sm text-slate-800 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      {CROP_SEASONS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
               </div>
