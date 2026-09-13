@@ -45,7 +45,9 @@ class Settings(BaseModel):
     GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-8b-8192"))
 
     # JWT Settings
-    JWT_SECRET_KEY: str = Field(default_factory=lambda: os.environ["JWT_SECRET_KEY"])
+    JWT_SECRET_KEY: str = Field(
+        default_factory=lambda: os.getenv("JWT_SECRET_KEY", "dev-secret-key-agrismart-ai-sih2026-secure")
+    )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")))
 
 settings = Settings()

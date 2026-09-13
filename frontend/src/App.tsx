@@ -3,6 +3,12 @@ import { Leaf } from 'lucide-react';
 import { Header } from './components/Header';
 import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { AuthProvider } from './context/AuthContext';
+import { AuthModal } from './components/auth/AuthModal';
+
+export type AppView = 'home' | 'crop-recommendation' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -87,27 +93,32 @@ function Footer() {
             </span>
           </div>
 
-          {/* Hackathon metadata */}
-          <div className="text-xs text-slate-400">
-            © {new Date().getFullYear()} AgriSmart AI
-          </div>
-
         </div>
       </div>
     </footer>
   );
 }
 
-export default function App() {
-  const [activeView, setActiveView] = useState<'home' | 'crop-recommendation'>('home');
+function AppShell() {
+  const [activeView, setActiveView] = useState<AppView>('home');
+  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation'>('home');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const handleNavigateHome = () => {
-    setActiveView('home');
+  const navigateTo = (view: AppView) => {
+    if (activeView === 'home' || activeView === 'crop-recommendation') {
+      setPreviousView(activeView);
+    }
+    setActiveView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenCropRecommendation = () => {
-    setActiveView('crop-recommendation');
+  const handleNavigateHome = () => navigateTo('home');
+  const handleOpenCropRecommendation = () => navigateTo('crop-recommendation');
+  const handleNavigateLogin = () => navigateTo('login');
+  const handleNavigateSignup = () => navigateTo('signup');
+
+  const handleReturnToPrevious = () => {
+    setActiveView(previousView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -116,16 +127,47 @@ export default function App() {
       <Header
         activeView={activeView}
         onNavigateHome={handleNavigateHome}
+        onNavigateCropRecommendation={handleOpenCropRecommendation}
+        onNavigateLogin={handleNavigateLogin}
+        onNavigateSignup={handleNavigateSignup}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
       <ErrorBoundary fallbackView={handleNavigateHome}>
-        {activeView === 'home' ? (
+        {activeView === 'home' && (
           <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
-        ) : (
+        )}
+        {activeView === 'crop-recommendation' && (
           <CropRecommendationPage onBack={handleNavigateHome} />
+        )}
+        {activeView === 'login' && (
+          <LoginPage
+            onBack={handleReturnToPrevious}
+            onNavigateSignup={handleNavigateSignup}
+            onSuccess={handleReturnToPrevious}
+          />
+        )}
+        {activeView === 'signup' && (
+          <SignupPage
+            onBack={handleReturnToPrevious}
+            onNavigateLogin={handleNavigateLogin}
+            onSuccess={handleReturnToPrevious}
+          />
         )}
       </ErrorBoundary>
       <Footer />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 

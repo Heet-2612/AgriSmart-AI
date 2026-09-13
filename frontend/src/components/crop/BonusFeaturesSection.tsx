@@ -1,4 +1,4 @@
-import { Sprout, FlaskConical, TrendingUp, ArrowRight, Check, Droplets, CloudFog, Sparkles } from 'lucide-react';
+import { Sprout, FlaskConical, ArrowRight, Check, Droplets, CloudFog } from 'lucide-react';
 import { Button } from '../Button';
 
 interface BonusFeaturesSectionProps {
@@ -36,8 +36,8 @@ export function BonusFeaturesSection({ onSelectCropRecommendation }: BonusFeatur
           </p>
         </div>
 
-        {/* Exactly Three Bonus Feature Cards in 1 row on Desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-7 items-stretch">
+        {/* Exactly Two Bonus Feature Cards in Balanced 2-Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch max-w-4xl mx-auto">
 
           {/* ── Card 1 — Active: Crop Recommendation (Green Theme) ── */}
           <div
@@ -118,11 +118,11 @@ export function BonusFeaturesSection({ onSelectCropRecommendation }: BonusFeatur
             </div>
           </div>
 
-          {/* ── Card 2 — Coming Soon: Soil Health & Nutrients (Blue Theme) ── */}
+          {/* ── Card 2 — Coming Soon: Sustainability Score (Blue Theme) ── */}
           <div
             className="relative flex flex-col justify-between rounded-[28px] border border-[#D6E8F5] bg-[#F2F8FC] p-6 sm:p-7 shadow-xs"
             role="region"
-            aria-label="Soil Health & Nutrients feature"
+            aria-label="Sustainability Score feature"
           >
             <div>
               {/* Top Row: Icon Pill & Coming Soon Badge */}
@@ -140,7 +140,7 @@ export function BonusFeaturesSection({ onSelectCropRecommendation }: BonusFeatur
 
               {/* Title & Description */}
               <h3 className="text-xl font-bold tracking-tight text-slate-900 mb-2">
-                Soil Health & Nutrients
+                Sustainability Score
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
                 Analyze soil chemistry, mineral saturation, and customized fertilization plans.
@@ -197,77 +197,6 @@ export function BonusFeaturesSection({ onSelectCropRecommendation }: BonusFeatur
             <div className="pt-2 mt-auto">
               <div
                 className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-100/60 px-5 py-2 text-xs font-bold text-blue-700/80 select-none cursor-not-allowed"
-                aria-hidden="true"
-              >
-                <span>Feature In Development</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Card 3 — Coming Soon: Yield & Harvest Forecast (Purple Theme) ── */}
-          <div
-            className="relative flex flex-col justify-between rounded-[28px] border border-[#ECE1FB] bg-[#F9F5FD] p-6 sm:p-7 shadow-xs"
-            role="region"
-            aria-label="Yield & Harvest Forecast feature"
-          >
-            <div>
-              {/* Top Row: Icon Pill & Coming Soon Badge */}
-              <div className="mb-4 flex items-center justify-between">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100/90 text-purple-600 shadow-2xs"
-                  aria-hidden="true"
-                >
-                  <Sparkles size={22} strokeWidth={2.2} />
-                </span>
-                <span className="rounded-full bg-white/90 border border-purple-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-purple-700 shadow-2xs">
-                  Coming Soon
-                </span>
-              </div>
-
-              {/* Title & Description */}
-              <h3 className="text-xl font-bold tracking-tight text-slate-900 mb-2">
-                Yield & Harvest Forecast
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
-                Project seasonal crop harvest timelines and estimated production metrics.
-              </p>
-
-              {/* Visual Mockup: AI Advisory & Forecast Interaction Panel */}
-              <div className="relative mb-6 rounded-2xl border border-purple-100 bg-white/95 p-3.5 shadow-2xs space-y-2.5">
-                {/* Farmer Query Bubble */}
-                <div className="flex items-start gap-2 text-left">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[10px]">
-                    <Sprout size={11} />
-                  </div>
-                  <div className="rounded-xl rounded-tl-none bg-slate-50 border border-slate-100 px-2.5 py-1.5 text-[11px] text-slate-700 leading-snug">
-                    How can I improve my tomato crop yield this season?
-                  </div>
-                </div>
-
-                {/* GenAI Advice Bubble */}
-                <div className="flex items-start gap-2 text-left">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-700 text-[10px]">
-                    <Sparkles size={11} />
-                  </div>
-                  <div className="rounded-xl rounded-tl-none bg-purple-50/70 border border-purple-100 px-2.5 py-1.5 text-[11px] text-purple-900 leading-snug">
-                    Here are recommendations tailored to your soil & climate...
-                  </div>
-                </div>
-
-                {/* Forecast Metric Badge */}
-                <div className="flex items-center justify-between pt-1 border-t border-purple-50 text-[10px] text-slate-400 font-medium">
-                  <span className="flex items-center gap-1 text-purple-600 font-bold">
-                    <TrendingUp size={11} /> +18% Yield Potential
-                  </span>
-                  <span className="text-[9px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold">Forecast</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Non-Interactive Indicator Pill */}
-            <div className="pt-2 mt-auto">
-              <div
-                className="inline-flex items-center gap-1.5 rounded-full border border-purple-200/80 bg-purple-100/60 px-5 py-2 text-xs font-bold text-purple-700/80 select-none cursor-not-allowed"
                 aria-hidden="true"
               >
                 <span>Feature In Development</span>

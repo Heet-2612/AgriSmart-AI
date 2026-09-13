@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { recommendCrop, ApiError } from '../api/client';
@@ -189,33 +190,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     return newErrors;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-
-    const validationErrors = validate();
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setGeneralError('Please correct the highlighted fields before submitting.');
-
-      // Place focus on the first invalid field for keyboard & screen-reader accessibility
-      const fieldOrder: (keyof CropRecommendationFormData)[] = [
-        'state',
-        'district',
-        'temperature',
-        'humidity',
-        'rainfall',
-        'soil_type',
-        'previous_crop',
-      ];
-      const firstInvalidField = fieldOrder.find((field) => validationErrors[field]);
-      if (firstInvalidField && fieldRefs[firstInvalidField]?.current) {
-        fieldRefs[firstInvalidField].current?.focus();
-      }
-      return;
-    }
-
+  const executeRecommendation = async () => {
     setErrors({});
     setGeneralError(null);
     setApiError(null);
@@ -269,6 +244,56 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const validationErrors = validate();
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setGeneralError('Please correct the highlighted fields before submitting.');
+
+      // Place focus on the first invalid field for keyboard & screen-reader accessibility
+      const fieldOrder: (keyof CropRecommendationFormData)[] = [
+        'state',
+        'district',
+        'temperature',
+        'humidity',
+        'rainfall',
+        'soil_type',
+        'previous_crop',
+      ];
+      const firstInvalidField = fieldOrder.find((field) => validationErrors[field]);
+      if (firstInvalidField && fieldRefs[firstInvalidField]?.current) {
+        fieldRefs[firstInvalidField].current?.focus();
+      }
+      return;
+    }
+
+    await executeRecommendation();
+  };
+
+  const handleRetry = async () => {
+    if (isSubmitting) return;
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setGeneralError('Please correct the highlighted fields before retrying.');
+      return;
+    }
+    await executeRecommendation();
+  };
+
+  const handleReset = () => {
+    setFormData(INITIAL_FORM_DATA);
+    setErrors({});
+    setGeneralError(null);
+    setApiError(null);
+    setRecommendationResult(null);
+    stateRef.current?.focus();
   };
 
   return (
@@ -335,7 +360,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
             </div>
           )}
 
-          {/* API Error Alert Banner */}
+          {/* API Error Alert Banner with Retry & Reset Actions */}
           {apiError && (
             <div
               role="alert"
@@ -346,6 +371,25 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
               <div className="flex-1">
                 <strong className="font-semibold text-red-950">Recommendation Request Issue</strong>
                 <p className="mt-0.5 text-red-800">{apiError}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    disabled={isSubmitting}
+                    aria-label="Retry recommendation request"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={13} className={isSubmitting ? 'animate-spin' : ''} aria-hidden="true" />
+                    <span>Retry Request</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="text-xs font-semibold text-red-700 hover:text-red-900 underline cursor-pointer"
+                  >
+                    Reset Form
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -699,7 +743,19 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                 Your information is used to generate a recommendation from the crop model.
               </p>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  onClick={handleReset}
+                  className="w-full sm:w-auto py-3 px-5 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                  aria-label="Reset Form"
+                >
+                  <RotateCcw size={15} aria-hidden="true" />
+                  <span>Reset Form</span>
+                </Button>
+
                 <Button
                   type="submit"
                   variant="primary"
@@ -913,6 +969,17 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                 >
                   <RefreshCw size={15} aria-hidden="true" />
                   <span>Adjust Conditions & Re-calculate</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleReset}
+                  className="w-full sm:w-auto py-2.5 px-5 text-sm font-semibold rounded-xl gap-2 cursor-pointer"
+                  aria-label="Start Over"
+                >
+                  <RotateCcw size={15} aria-hidden="true" />
+                  <span>Start Over</span>
                 </Button>
 
                 <Button
