@@ -51,6 +51,7 @@ interface CropRecommendationPageProps {
   onBack: () => void;
   onSubmit?: (data: CropRecommendationFormData) => void;
   initialPreviousCrop?: string;
+  onOpenSustainability?: (ctx: { crop: string; previousCrop?: string; soilType?: string; location?: string }) => void;
 }
 
 const INITIAL_FORM_DATA: CropRecommendationFormData = {
@@ -81,7 +82,7 @@ export function getConfidencePercent(conf: unknown): number {
   return Math.min(100, Math.max(0, percent));
 }
 
-export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop }: CropRecommendationPageProps) {
+export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, onOpenSustainability }: CropRecommendationPageProps) {
   const [formData, setFormData] = useState<CropRecommendationFormData>(() => ({
     ...INITIAL_FORM_DATA,
     previous_crop: initialPreviousCrop || '',
@@ -904,6 +905,25 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop }
 
               {/* Action Buttons: Adjust / Recalculate or Return */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
+                {onOpenSustainability && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      onOpenSustainability({
+                        crop: recommendationResult.recommended_crop,
+                        previousCrop: formData.previous_crop,
+                        soilType: formData.soil_type,
+                        location: formData.district || formData.state,
+                      });
+                    }}
+                    className="w-full sm:w-auto py-2.5 px-5 text-sm font-semibold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 gap-2 cursor-pointer"
+                    aria-label="Assess sustainability and water impact for recommended crop"
+                  >
+                    <Sparkles size={15} className="text-emerald-600" aria-hidden="true" />
+                    <span>Assess Sustainability & Water Impact →</span>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="primary"

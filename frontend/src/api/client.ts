@@ -1,4 +1,4 @@
-import { HealthResponse, PredictionResponse, CropRecommendationRequest, CropRecommendationResponse } from '../types';
+import { HealthResponse, PredictionResponse, CropRecommendationRequest, CropRecommendationResponse, WeatherResponse, IoTPresetsResponse, SustainabilityScoreRequest, SustainabilityScoreResponse } from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -65,3 +65,56 @@ export async function recommendCrop(
 }
 
 export const recommendCrops = recommendCrop;
+
+
+export async function getWeather(location: string): Promise<WeatherResponse> {
+  const query = encodeURIComponent(location.trim());
+  const res = await fetch(`/api/weather?location=${query}`);
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, errorData.detail || `Weather fetch failed with status: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getIoTPresets(): Promise<IoTPresetsResponse> {
+  const res = await fetch('/api/sustainability/iot-telemetry');
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, errorData.detail || `Failed to fetch IoT telemetry presets: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function calculateSustainabilityScore(
+  data: SustainabilityScoreRequest
+): Promise<SustainabilityScoreResponse> {
+  const res = await fetch('/api/sustainability-score', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    let message = 'Failed to calculate sustainability score';
+    if (typeof errorData?.detail === 'string') {
+      message = errorData.detail;
+    } else if (Array.isArray(errorData?.detail)) {
+      message = errorData.detail
+        .map((d: { msg?: string }) => d.msg || JSON.stringify(d))
+        .join('; ');
+    } else if (res.statusText) {
+      message = `${res.statusText} (${res.status})`;
+    }
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}

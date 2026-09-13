@@ -1,3 +1,4 @@
+import { SustainabilityPage } from './pages/SustainabilityPage';
 import { useState, Component, ReactNode, ErrorInfo } from 'react';
 import { Leaf } from 'lucide-react';
 import { Header } from './components/Header';
@@ -99,11 +100,20 @@ function Footer() {
 }
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'home' | 'crop-recommendation'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
+  const [sustainabilityContext, setSustainabilityContext] = useState<{ crop?: string; previousCrop?: string; soilType?: string; location?: string }>({});
   const [suggestedCrop, setSuggestedCrop] = useState<string>('');
 
   const handleNavigateHome = () => {
     setActiveView('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenSustainability = (ctx?: { crop?: string; previousCrop?: string; soilType?: string; location?: string }) => {
+    if (ctx) {
+      setSustainabilityContext(ctx);
+    }
+    setActiveView('sustainability');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -120,12 +130,25 @@ export default function App() {
       <Header
         activeView={activeView}
         onNavigateHome={handleNavigateHome}
+        onNavigateSustainability={() => handleOpenSustainability()}
       />
       <ErrorBoundary fallbackView={handleNavigateHome}>
         {activeView === 'home' ? (
           <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
+        ) : activeView === 'crop-recommendation' ? (
+          <CropRecommendationPage
+            onBack={handleNavigateHome}
+            initialPreviousCrop={suggestedCrop}
+            onOpenSustainability={handleOpenSustainability}
+          />
         ) : (
-          <CropRecommendationPage onBack={handleNavigateHome} initialPreviousCrop={suggestedCrop} />
+          <SustainabilityPage
+            onBack={handleNavigateHome}
+            initialCrop={sustainabilityContext.crop || 'Chickpea'}
+            initialPreviousCrop={sustainabilityContext.previousCrop || 'Cotton'}
+            initialSoilType={sustainabilityContext.soilType || 'Black'}
+            initialLocation={sustainabilityContext.location || 'Nagpur'}
+          />
         )}
       </ErrorBoundary>
       <Footer />

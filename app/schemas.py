@@ -138,3 +138,120 @@ class ChatRequest(BaseModel):
         if v is not None and v not in ("en", "hi", "gu"):
             raise ValueError("unsupported language code")
         return v
+
+
+# ==========================================
+# Weather Intelligence Schemas
+# ==========================================
+
+class WeatherLocation(BaseModel):
+    name: str
+    country: str
+    latitude: float
+    longitude: float
+
+
+class WeatherCurrent(BaseModel):
+    temperature: float
+    humidity: int
+    wind_speed: float
+    weather_code: int
+    condition: str
+
+
+class WeatherDaily(BaseModel):
+    temp_min: float
+    temp_max: float
+    precipitation_sum: float
+    precipitation_probability: int
+
+
+class WeatherResponse(BaseModel):
+    location: WeatherLocation
+    current: WeatherCurrent
+    daily: WeatherDaily
+    advisories: list[str]
+
+
+# ==========================================
+# Simulated IoT Sensor Telemetry Schemas
+# ==========================================
+
+class SensorTelemetry(BaseModel):
+    soil_moisture_percent: float = Field(..., ge=0.0, le=100.0, description="Volumetric or capacitive soil moisture %")
+    soil_temperature_celsius: float = Field(..., ge=-10.0, le=60.0, description="Root-zone temperature in °C")
+    irrigation_flow_rate_lpm: float = Field(default=30.0, ge=0.0, description="Drip/sprinkler flow rate in Liters/Minute")
+    irrigation_duration_minutes: int = Field(default=60, ge=0, description="Nominal irrigation cycle duration in minutes")
+    water_tank_level_percent: Optional[float] = Field(default=85.0, ge=0.0, le=100.0, description="Water storage tank level %")
+    soil_ph: Optional[float] = Field(default=6.8, ge=0.0, le=14.0, description="Soil pH reading")
+    soil_ec_ds_m: Optional[float] = Field(default=1.2, ge=0.0, description="Soil Electrical Conductivity in dS/m")
+    is_simulated: bool = Field(default=True, description="True if telemetry originates from simulated IoT layer")
+
+
+class IoTPreset(BaseModel):
+    preset_id: str
+    name: str
+    description: str
+    telemetry: SensorTelemetry
+
+
+class IoTPresetsResponse(BaseModel):
+    presets: list[IoTPreset]
+
+
+# ==========================================
+# Sustainability Score Schemas
+# ==========================================
+
+class SustainabilityScoreRequest(BaseModel):
+    crop: str = Field(..., min_length=1, description="Target crop name")
+    farm_area_hectares: float = Field(default=0.1, gt=0.0, le=10000.0, description="Farm plot size in hectares")
+    soil_type: Optional[str] = Field(default=None, description="Soil classification")
+    previous_crop: Optional[str] = Field(default=None, description="Previously harvested crop")
+    action: str = Field(default="delay", pattern="^(delay|irrigate_now)$", description="Planned irrigation decision")
+
+    # Climatological parameters (from live weather or user)
+    temperature_celsius: float = Field(..., ge=-10.0, le=60.0, description="Ambient air temperature in °C")
+    humidity_percent: float = Field(..., ge=0.0, le=100.0, description="Relative humidity in %")
+    rain_probability_percent: float = Field(default=0.0, ge=0.0, le=100.0, description="Probability of rain in %")
+    expected_rainfall_mm: float = Field(default=0.0, ge=0.0, le=1000.0, description="Expected precipitation in mm")
+
+    # Optional IoT telemetry override (defaults to simulated optimal profile if omitted)
+    telemetry: Optional[SensorTelemetry] = Field(default=None, description="Simulated or real IoT telemetry")
+    soil_moisture_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Convenience override for soil moisture")
+
+
+class ScoreBreakdownItem(BaseModel):
+    dimension: str
+    points: float
+    max_points: float
+    percentage: float
+    reason: str
+    status: str
+
+
+class WaterImpactEstimate(BaseModel):
+    litres: int
+    impact_type: str  # "saved", "unnecessary_use", "neutral"
+    label: str
+    formula_basis: str
+
+
+class ActionComparisonOption(BaseModel):
+    action: str
+    score: int
+    score_label: str
+    water_impact_litres: int
+    water_impact_type: str
+
+
+class SustainabilityScoreResponse(BaseModel):
+    total_score: int
+    score_label: str  # "Excellent", "Good", "Needs Improvement"
+    summary: str
+    recommendation: str
+    breakdown: dict[str, ScoreBreakdownItem]
+    water_impact: WaterImpactEstimate
+    comparison: dict[str, ActionComparisonOption]
+    telemetry_used: SensorTelemetry
+    simulated_telemetry_notice: str

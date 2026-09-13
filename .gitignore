@@ -89,3 +89,6 @@ mlruns/
 *.ckpt
 *.h5
 !model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt
+
+# Allow frontend lib directory
+!frontend/src/lib/

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Leaf, Menu, X } from 'lucide-react';
 
 interface HeaderProps {
-  activeView?: 'home' | 'crop-recommendation';
+  activeView?: 'home' | 'crop-recommendation' | 'sustainability';
+  onNavigateSustainability?: () => void;
   onNavigateHome?: () => void;
 }
 
-export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}) {
+export function Header({ activeView = 'home', onNavigateHome, onNavigateSustainability }: HeaderProps = {}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLinkClick = (hash?: string) => {
@@ -72,6 +73,19 @@ export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}
             >
               Home
             </a>
+            <button
+              type="button"
+              onClick={() => {
+                onNavigateSustainability?.();
+              }}
+              className="rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer border-none bg-transparent hover:bg-slate-50"
+              style={{
+                backgroundColor: activeView === 'sustainability' ? '#ECFDF5' : 'transparent',
+                color: activeView === 'sustainability' ? '#059669' : '#475569',
+              }}
+            >
+              Sustainability
+            </button>
             <a
               href="#how-it-works"
               onClick={() => handleLinkClick('#how-it-works')}
@@ -150,6 +164,16 @@ export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}
             >
               Home
             </a>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onNavigateSustainability?.();
+              }}
+              className="block w-full text-left rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 border-none bg-transparent cursor-pointer"
+            >
+              Sustainability
+            </button>
             <a
               href="#how-it-works"
               onClick={() => {
