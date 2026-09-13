@@ -450,27 +450,29 @@ export function calculateClientSustainabilityScore(
   // Water Volume Impact
   const flow = req.telemetry?.irrigation_flow_rate_lpm ?? 30.0;
   const duration = req.telemetry?.irrigation_duration_minutes ?? 60.0;
-  const scaledLiters = Math.round(flow * duration * (farmArea / 0.1));
+  // Option A: irrigation_flow_rate_lpm represents total irrigation-system flow for the selected field.
+  // Total cycle volume = flow * duration. Field area does NOT multiply volume.
+  const cycleLiters = Math.round(flow * duration);
 
-  let waterImpactLitres = scaledLiters;
+  let waterImpactLitres = cycleLiters;
   let impactType: 'avoided' | 'saved' | 'unnecessary_use' | 'neutral' = 'neutral';
-  let impactLabel = `${scaledLiters.toLocaleString()} L Productively Delivered`;
-  let formulaBasis = `Measured water delivery (${flow.toFixed(0)} L/min over ${duration} min) satisfying crop requirement on ${farmArea.toFixed(2)} ha.`;
+  let impactLabel = `${cycleLiters.toLocaleString()} L Productively Delivered`;
+  let formulaBasis = `Measured water delivery (${flow.toFixed(0)} L/min over ${duration} min) satisfying crop requirement on ${farmArea.toFixed(2)} ha field (${cycleLiters.toLocaleString()} L total cycle volume).`;
 
   if (action === 'delay') {
     if (isRainImminent || moisture > soilProfile.optimal_max) {
       impactType = 'avoided';
-      impactLabel = `Potential Irrigation Water Avoided: ${scaledLiters.toLocaleString()} L`;
-      formulaBasis = `Avoided 1 planned irrigation cycle (${flow.toFixed(0)} L/min × ${duration} min for ${farmArea.toFixed(2)} ha) because rain or root-zone moisture was sufficient. Represents simulated cycle volume avoided, not agronomic excess demand.`;
+      impactLabel = `Potential Irrigation Water Avoided: ${cycleLiters.toLocaleString()} L`;
+      formulaBasis = `Avoided 1 planned irrigation cycle (${flow.toFixed(0)} L/min × ${duration} min for ${farmArea.toFixed(2)} ha field) because rain or root-zone moisture was sufficient. Represents simulated cycle volume avoided, not agronomic excess demand.`;
     } else {
       impactType = 'neutral';
-      impactLabel = `Estimated ${scaledLiters.toLocaleString()} L Irrigation Deferred`;
-      formulaBasis = `Irrigation deferred under standard operational schedule for ${farmArea.toFixed(2)} ha.`;
+      impactLabel = `Estimated ${cycleLiters.toLocaleString()} L Irrigation Deferred`;
+      formulaBasis = `Irrigation deferred under standard operational schedule for ${farmArea.toFixed(2)} ha field (${cycleLiters.toLocaleString()} L total cycle volume).`;
     }
   } else if (isRainImminent || moisture > soilProfile.optimal_max) {
     impactType = 'unnecessary_use';
-    impactLabel = `Estimated ${scaledLiters.toLocaleString()} L Redundant Application`;
-    formulaBasis = `Application during imminent rain or soil saturation leads to avoidable pumping across ${farmArea.toFixed(2)} ha.`;
+    impactLabel = `Estimated ${cycleLiters.toLocaleString()} L Redundant Application`;
+    formulaBasis = `Application during imminent rain or soil saturation leads to avoidable pumping (${cycleLiters.toLocaleString()} L total cycle volume for ${farmArea.toFixed(2)} ha field).`;
   }
 
   // Recommendations
@@ -541,14 +543,14 @@ export function calculateClientSustainabilityScore(
         action: 'delay',
         score: delayTotal,
         score_label: getScoreLabel(delayTotal),
-        water_impact_litres: scaledLiters,
+        water_impact_litres: cycleLiters,
         water_impact_type: isRainImminent || moisture > soilProfile.optimal_max ? 'avoided' : 'neutral',
       },
       irrigate_now: {
         action: 'irrigate_now',
         score: irrigateTotal,
         score_label: getScoreLabel(irrigateTotal),
-        water_impact_litres: scaledLiters,
+        water_impact_litres: cycleLiters,
         water_impact_type: isRainImminent || moisture > soilProfile.optimal_max ? 'unnecessary_use' : 'neutral',
       },
     },

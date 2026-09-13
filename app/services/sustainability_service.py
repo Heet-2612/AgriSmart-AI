@@ -414,10 +414,9 @@ def calculate_water_volume_impact(
     Terminology: When delaying unnecessary irrigation, reports 'Potential Irrigation Water Avoided'
     representing the simulated cycle volume avoided, rather than claiming an unjustified scientific 'Water Saved'.
     """
-    nominal_cycle_liters = telemetry.irrigation_flow_rate_lpm * telemetry.irrigation_duration_minutes
-    # Scaling: 1 standard 0.1 ha drip sub-block
-    baseline_block_ha = 0.1
-    scaled_liters = int(round(nominal_cycle_liters * (farm_area_ha / baseline_block_ha)))
+    # Option A: irrigation_flow_rate_lpm represents total irrigation-system flow for the selected field.
+    # Total cycle volume = flow_rate_lpm * irrigation_duration_minutes. Field area does NOT multiply volume.
+    cycle_liters = int(round(telemetry.irrigation_flow_rate_lpm * telemetry.irrigation_duration_minutes))
 
     rain_imminent = is_rain_imminent(rain_prob, expected_rainfall)
     opt_max = profile["optimal_max"]
@@ -425,31 +424,31 @@ def calculate_water_volume_impact(
     if action == "delay":
         if rain_imminent or soil_moisture > opt_max:
             return WaterImpactEstimate(
-                litres=scaled_liters,
+                litres=cycle_liters,
                 impact_type="avoided",
-                label=f"Potential Irrigation Water Avoided: {scaled_liters:,} L",
+                label=f"Potential Irrigation Water Avoided: {cycle_liters:,} L",
                 formula_basis=f"Avoided 1 planned irrigation cycle ({telemetry.irrigation_flow_rate_lpm:.0f} L/min × {telemetry.irrigation_duration_minutes:.0f} min for {farm_area_ha:.2f} ha) because rain or root-zone moisture was sufficient. Represents simulated cycle volume avoided, not agronomic excess demand.",
             )
         return WaterImpactEstimate(
-            litres=scaled_liters,
+            litres=cycle_liters,
             impact_type="neutral",
-            label=f"Estimated {scaled_liters:,} L Irrigation Deferred",
+            label=f"Estimated {cycle_liters:,} L Irrigation Deferred",
             formula_basis=f"Irrigation deferred under standard operational schedule for {farm_area_ha:.2f} ha.",
         )
 
     # action == "irrigate_now"
     if rain_imminent or soil_moisture > opt_max:
         return WaterImpactEstimate(
-            litres=scaled_liters,
+            litres=cycle_liters,
             impact_type="unnecessary_use",
-            label=f"Estimated {scaled_liters:,} L Redundant Application",
+            label=f"Estimated {cycle_liters:,} L Redundant Application",
             formula_basis=f"Application during imminent rain or soil saturation leads to avoidable pumping across {farm_area_ha:.2f} ha.",
         )
 
     return WaterImpactEstimate(
-        litres=scaled_liters,
+        litres=cycle_liters,
         impact_type="neutral",
-        label=f"{scaled_liters:,} L Productively Delivered",
+        label=f"{cycle_liters:,} L Productively Delivered",
         formula_basis=f"Measured water delivery ({telemetry.irrigation_flow_rate_lpm:.0f} L/min over {telemetry.irrigation_duration_minutes:.0f} min) satisfying crop requirement on {farm_area_ha:.2f} ha.",
     )
 

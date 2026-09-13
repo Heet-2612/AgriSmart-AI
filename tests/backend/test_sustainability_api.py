@@ -43,7 +43,8 @@ def test_scenario_a_optimal_conditions_high_score():
     assert data["breakdown"]["water_conservation"]["points"] == 40.0
     assert data["breakdown"]["crop_rotation_compatibility"]["points"] == 15.0
     assert data["water_impact"]["impact_type"] in ("avoided", "saved")
-    assert data["water_impact"]["litres"] > 0
+    # Option A: 30 L/min * 60 min = 1,800 Litres (total field flow rate)
+    assert data["water_impact"]["litres"] == 1800
     assert "Avoided" in data["water_impact"]["label"]
 
 
@@ -176,3 +177,29 @@ def test_dry_soil_dry_forecast_irrigate_now_positive_score():
     # Timely irrigation of deficit produces 36.0 water conservation points
     assert data["breakdown"]["water_conservation"]["points"] == 36.0
     assert "Targeted Relief" in data["breakdown"]["water_conservation"]["status"]
+
+
+def test_water_volume_impact_represents_total_field_flow():
+    """Verify that flow_rate_lpm represents total field flow, so area does not multiply volume."""
+    payload_small = {
+        "crop": "wheat",
+        "farm_area_hectares": 0.1,
+        "action": "delay",
+        "temperature_celsius": 25.0,
+        "humidity_percent": 60.0,
+        "rain_probability_percent": 80.0,
+        "expected_rainfall_mm": 15.0,
+        "soil_moisture_percent": 32.0,
+    }
+    payload_large = {
+        **payload_small,
+        "farm_area_hectares": 5.0,
+    }
+    res_small = client.post("/api/sustainability-score", json=payload_small)
+    res_large = client.post("/api/sustainability-score", json=payload_large)
+
+    assert res_small.status_code == 200
+    assert res_large.status_code == 200
+    # Both should evaluate to identical 1,800 L (30 L/min * 60 min)
+    assert res_small.json()["water_impact"]["litres"] == 1800
+    assert res_large.json()["water_impact"]["litres"] == 1800

@@ -118,9 +118,9 @@ describe('Sustainability Library & Calculation Engine', () => {
       telemetry,
     });
 
-    // 30 L/min * 60 min * (0.2 / 0.1) = 3,600 Litres
-    expect(res.water_impact.litres).toBe(3600);
+    // Option A: Total field delivery = 30 L/min * 60 min = 1,800 Litres (area does not multiply flow)
+    expect(res.water_impact.litres).toBe(1800);
     expect(res.water_impact.impact_type).toBe('avoided');
-    expect(res.water_impact.label).toContain('Potential Irrigation Water Avoided: 3,600 L');
+    expect(res.water_impact.label).toContain('Potential Irrigation Water Avoided: 1,800 L');
   });
 });
