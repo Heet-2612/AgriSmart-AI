@@ -2,6 +2,7 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.config import settings
 
 @pytest.fixture
 def client():
@@ -43,8 +44,9 @@ def test_empty_image_upload_rejected(client):
     assert response.status_code == 400
     assert "empty" in response.json()["detail"].lower()
 
-def test_missing_checkpoint_does_not_produce_fake_prediction(client):
+def test_missing_checkpoint_does_not_produce_fake_prediction(client, monkeypatch):
     """Verify that an unavailable model returns HTTP 503 rather than fabricating results."""
+    monkeypatch.setattr(settings, "MODEL_CHECKPOINT_PATH", "model/checkpoints/non_existent.pt")
     dummy_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
     response = client.post(
         "/api/predictions",

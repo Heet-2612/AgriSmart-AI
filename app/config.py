@@ -30,11 +30,11 @@ class Settings(BaseModel):
     DB_ECHO: bool = Field(default_factory=lambda: os.getenv("DB_ECHO", "false").lower() in ("true", "1"))
     MODEL_CHECKPOINT_PATH: str = Field(
         default_factory=lambda: os.getenv(
-            "MODEL_CHECKPOINT_PATH", "model/checkpoints/best_model.pt"
+            "MODEL_CHECKPOINT_PATH", "model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt"
         )
     )
     MODEL_VERSION: str = Field(
-        default_factory=lambda: os.getenv("MODEL_VERSION", "v0.1.0-scaffold")
+        default_factory=lambda: os.getenv("MODEL_VERSION", "E11-SigLIP-HYBRID10-PRODUCTION")
     )
 
 settings = Settings()

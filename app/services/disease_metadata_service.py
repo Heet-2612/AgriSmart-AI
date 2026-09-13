@@ -12,7 +12,7 @@ class DiseaseMetadata:
 class DiseaseMetadataService:
     """Backend-owned service for mapping canonical ML classes to user-facing metadata.
 
-    The ML predictor only produces a canonical class identifier (e.g. 'Tomato___Early_blight').
+    The ML predictor produces a canonical class identifier (e.g. 'Potato Early Blight').
     The backend owns display_name, precaution, and future user-facing presentation data.
     """
 
@@ -48,12 +48,56 @@ class DiseaseMetadataService:
             parts = predicted_class.split("___", 1)
             crop = parts[0].replace("_", " ").strip().title()
             condition = parts[1].replace("_", " ").strip().title()
-            return f"{crop} — {condition}"
+            return f"{crop} \u2014 {condition}"
         return predicted_class.replace("_", " ").strip().title()
 
 
+# Canonical HYBRID-10 disease metadata registry
+HYBRID_10_METADATA_REGISTRY: Dict[str, DiseaseMetadata] = {
+    "Potato Early Blight": DiseaseMetadata(
+        display_name="Potato \u2014 Early Blight",
+        precaution="Apply copper-based fungicides, prune infected lower foliage, and ensure adequate plant spacing for airflow.",
+    ),
+    "Potato Late Blight": DiseaseMetadata(
+        display_name="Potato \u2014 Late Blight",
+        precaution="Immediately isolate or remove infected plants; apply protective fungicides (mancozeb/chlorothalonil) and avoid overhead watering.",
+    ),
+    "Potato Healthy": DiseaseMetadata(
+        display_name="Potato \u2014 Healthy",
+        precaution="No disease detected. Maintain standard watering and balanced fertilization practices.",
+    ),
+    "Corn Gray Leaf Spot": DiseaseMetadata(
+        display_name="Corn \u2014 Gray Leaf Spot",
+        precaution="Implement crop rotation with non-host crops, manage crop residue, and consider foliar fungicide application if lesions advance.",
+    ),
+    "Corn Healthy": DiseaseMetadata(
+        display_name="Corn \u2014 Healthy",
+        precaution="No disease detected. Continue standard crop scouting and weed management.",
+    ),
+    "Tomato Yellow Leaf Curl Virus": DiseaseMetadata(
+        display_name="Tomato \u2014 Yellow Leaf Curl Virus",
+        precaution="Manage whitefly populations using reflective mulches and insect netting; rogue and dispose of symptomatic plants promptly.",
+    ),
+    "Tomato Healthy": DiseaseMetadata(
+        display_name="Tomato \u2014 Healthy",
+        precaution="No disease detected. Maintain consistent drip irrigation and staking.",
+    ),
+    "Apple Scab": DiseaseMetadata(
+        display_name="Apple \u2014 Scab",
+        precaution="Rake and destroy fallen leaf litter; apply preventive fungicides during wet spring infection periods.",
+    ),
+    "Apple Cedar Rust": DiseaseMetadata(
+        display_name="Apple \u2014 Cedar Apple Rust",
+        precaution="Remove nearby cedar/juniper galls; apply targeted fungicides at the pink bud stage.",
+    ),
+    "Apple Healthy": DiseaseMetadata(
+        display_name="Apple \u2014 Healthy",
+        precaution="No disease detected. Continue routine orchard sanitation and seasonal pruning.",
+    ),
+}
+
 # Default singleton instance for application runtime
-_default_metadata_service = DiseaseMetadataService()
+_default_metadata_service = DiseaseMetadataService(registry=HYBRID_10_METADATA_REGISTRY)
 
 
 def get_default_metadata_service() -> DiseaseMetadataService:

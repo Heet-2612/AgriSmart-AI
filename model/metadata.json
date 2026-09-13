@@ -1,0 +1,34 @@
+{
+  "model_version": "E11-SigLIP-HYBRID10-PRODUCTION",
+  "architecture": "vit_base_patch16_siglip_224",
+  "backbone": "vit_base_patch16_siglip_224",
+  "pretrained_source": "timm/v2_webli",
+  "checkpoint_path": "model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt",
+  "checkpoint_sha256": "a51d814fc434c514743180a9df596d6a5aa6d250e7b3e496dd5927fdea6c64df",
+  "feature_dimension": 768,
+  "num_classes": 10,
+  "class_ordering": [
+    "Potato Early Blight",
+    "Potato Late Blight",
+    "Potato Healthy",
+    "Corn Gray Leaf Spot",
+    "Corn Healthy",
+    "Tomato Yellow Leaf Curl Virus",
+    "Tomato Healthy",
+    "Apple Scab",
+    "Apple Cedar Rust",
+    "Apple Healthy"
+  ],
+  "preprocessing": {
+    "input_size": [3, 224, 224],
+    "interpolation": "bicubic",
+    "mean": [0.5, 0.5, 0.5],
+    "std": [0.5, 0.5, 0.5],
+    "pixel_range": [-1.0, 1.0]
+  },
+  "training_image_count": 17489,
+  "best_epoch": 10,
+  "total_epochs": 15,
+  "protocol_identifier": "E11_SIGLIP_FROZEN_BACKBONE_LINEAR_PROBE_PRODUCTION",
+  "state_dict_used": "model_state_dict (epoch 10 best PlantVillage validation Macro-F1: 98.96%)"
+}
