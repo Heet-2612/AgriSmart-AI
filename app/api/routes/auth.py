@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.schemas import UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse
 from app.db.models.user import User
 from app.core.database import get_db_session
+from app.dependencies import get_current_user
 from app.core.security import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -78,3 +79,13 @@ async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db_ses
         
     access_token = create_access_token(subject=str(user.id))
     return TokenResponse(access_token=access_token)
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get current authenticated user"
+)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Return the current authenticated user details."""
+    return current_user
