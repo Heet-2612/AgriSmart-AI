@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 from pydantic import BaseModel, Field
 
 # Load .env file into os.environ if present in project root
@@ -36,5 +37,11 @@ class Settings(BaseModel):
     MODEL_VERSION: str = Field(
         default_factory=lambda: os.getenv("MODEL_VERSION", "v0.1.0-scaffold")
     )
+    
+    # GenAI Settings
+    GEMINI_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))
+    GROQ_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+    GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+    GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-8b-8192"))
 
 settings = Settings()

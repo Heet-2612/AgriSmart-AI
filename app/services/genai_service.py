@@ -1,0 +1,185 @@
+import json
+from datetime import datetime, timezone
+import logging
+from google import genai
+from google.genai import types as genai_types
+from google.genai.errors import APIError as GeminiAPIError
+from groq import Groq
+from groq import APIError as GroqAPIError, APIConnectionError as GroqAPIConnectionError, RateLimitError as GroqRateLimitError, InternalServerError as GroqInternalServerError
+from app.config import settings
+from app.schemas import ChatContext, ChatAnswer
+from app.core.errors import ChatProviderUnavailableError
+
+logger = logging.getLogger(__name__)
+
+# Initialize clients lazily if keys are available
+_gemini_client = None
+_groq_client = None
+
+def get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None and settings.GEMINI_API_KEY:
+        _gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _gemini_client
+
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None and settings.GROQ_API_KEY:
+        _groq_client = Groq(api_key=settings.GROQ_API_KEY)
+    return _groq_client
+
+def _build_grounding_context(context: ChatContext) -> str:
+    parts = []
+    parts.append(f"Predicted Disease: {context.predicted_class}")
+    parts.append(f"Confidence: {context.confidence:.2f}")
+    
+    # Ambiguity check
+    sorted_probs = sorted(context.probabilities.items(), key=lambda x: x[1], reverse=True)
+    if len(sorted_probs) > 1:
+        top_prob = sorted_probs[0][1]
+        second_prob = sorted_probs[1][1]
+        if top_prob - second_prob < 0.15: # 0.15 threshold for ambiguity
+            parts.append(f"Note: The prediction is somewhat ambiguous. {sorted_probs[1][0]} is also a possibility.")
+            
+    if context.fallback_used:
+        parts.append("Note: The primary diagnostic system encountered an issue, so a fallback diagnostic was used. Please be slightly more cautious in your tone.")
+            
+    if context.disease_metadata:
+        md = context.disease_metadata
+        parts.append(f"Disease Name: {md.display_name}")
+        parts.append(f"Symptoms: {md.symptoms}")
+        parts.append(f"Treatment: {md.treatment}")
+        if md.precautions:
+            parts.append(f"Precautions: {md.precautions}")
+            
+    if context.weather_context:
+        w = context.weather_context
+        w_parts = []
+        if w.risk_level: w_parts.append(f"Risk Level: {w.risk_level}")
+        if w.temperature is not None: w_parts.append(f"Temp: {w.temperature}°C")
+        if w.humidity is not None: w_parts.append(f"Humidity: {w.humidity}%")
+        if w.rainfall_probability is not None: w_parts.append(f"Rainfall Prob: {w.rainfall_probability:.2f}")
+        if w_parts:
+            parts.append("Weather Context: " + ", ".join(w_parts))
+            
+    if context.location_context:
+        parts.append(f"Location Context: {json.dumps(context.location_context)}")
+        
+    if context.farmer_context:
+        parts.append(f"Farmer Context: {json.dumps(context.farmer_context)}")
+
+    return "\n".join(parts)
+
+
+def _build_system_prompt(context: ChatContext, grounding_text: str) -> str:
+    lang = context.language or "en"
+    return (
+        "You are a helpful, simple, farmer-friendly agricultural assistant. "
+        "Answer the farmer's question directly using ONLY the following Grounding Context. "
+        "Do not invent facts, symptoms, treatments, precautions, pesticides, dosages, weather, or farmer info. "
+        "If the information is not in the context, clearly state that you do not have that information. "
+        "If the prediction is ambiguous/uncertain, communicate that uncertainty politely. "
+        "If the question is unrelated to agriculture or the disease, politely redirect the user. "
+        f"IMPORTANT: The farmer-facing answer MUST be written entirely in the requested language (language code: {lang}). "
+        "Disease names and technical terms may remain in their standard form if translating them reduces clarity, "
+        "but all treatments, symptoms, precautions, and other facts must come ONLY from the Grounding Context.\n\n"
+        "--- Grounding Context ---\n"
+        f"{grounding_text}\n"
+        "--------------------------"
+    )
+
+def generate_chat_answer(context: ChatContext) -> ChatAnswer:
+    if context.leaf_detected is False:
+        return ChatAnswer(
+            answer="I couldn't find diagnosis details for this — please try uploading a clearer photo of the leaf.",
+            session_id=context.session_id,
+            grounded=False,
+            source="system",
+            timestamp=datetime.now(timezone.utc)
+        )
+
+    if not context.disease_metadata:
+        # Graceful fallback when missing core grounding
+        return ChatAnswer(
+            answer="I'm sorry, but I do not have enough specific disease information available right now to provide a detailed answer.",
+            session_id=context.session_id,
+            grounded=False,
+            source="system",
+            timestamp=datetime.now(timezone.utc)
+        )
+        
+    grounding_text = _build_grounding_context(context)
+    system_prompt = _build_system_prompt(context, grounding_text)
+    user_prompt = context.question
+    
+    gemini = get_gemini_client()
+    groq = get_groq_client()
+    
+    gemini_failed = False
+    # Try Gemini first
+    if gemini:
+        try:
+            response = gemini.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=user_prompt,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=system_prompt
+                )
+            )
+            if response.text and response.text.strip():
+                return ChatAnswer(
+                    answer=response.text.strip(),
+                    session_id=context.session_id,
+                    grounded=True,
+                    source="gemini",
+                    timestamp=datetime.now(timezone.utc)
+                )
+            else:
+                logger.warning("Gemini returned an empty response, triggering fallback.")
+                gemini_failed = True
+        except GeminiAPIError as e:
+            code = getattr(e, 'code', None)
+            if code in (429, 500, 502, 503, 504):
+                logger.warning(f"Gemini generation transient failure (code={code}), falling back to Groq: {e}")
+                gemini_failed = True
+            else:
+                logger.error(f"Gemini generation fatal error (code={code}): {e}")
+                raise # Bubble up fatal/auth errors
+    else:
+        gemini_failed = True
+            
+    # Fallback to Groq
+    if groq and gemini_failed:
+        try:
+            response = groq.chat.completions.create(
+                model=settings.GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=1024,
+                temperature=0.3
+            )
+            
+            if response.choices and response.choices[0].message.content and response.choices[0].message.content.strip():
+                return ChatAnswer(
+                    answer=response.choices[0].message.content.strip(),
+                    session_id=context.session_id,
+                    grounded=True,
+                    source="groq",
+                    timestamp=datetime.now(timezone.utc)
+                )
+            else:
+                logger.error("Groq returned an empty response.")
+                raise ChatProviderUnavailableError("Empty response from providers")
+                
+        except (GroqInternalServerError, GroqAPIConnectionError, GroqRateLimitError) as e:
+            logger.error(f"Groq transient generation failed: {e}")
+            raise ChatProviderUnavailableError() from e
+        except GroqAPIError as e:
+            # E.g. authentication errors bubble up
+            logger.error(f"Groq generation fatal error: {e}")
+            raise
+            
+    # Both failed or unavailable
+    raise ChatProviderUnavailableError()
