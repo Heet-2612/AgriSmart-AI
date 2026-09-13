@@ -17,9 +17,13 @@ class PredictionResponse(BaseModel):
     leaf_detected: Optional[bool] = None
     roi_count: Optional[int] = None
     fallback_used: Optional[bool] = None
+    is_conclusive: Optional[bool] = True
+    status: Optional[str] = "confident"
 
 class ErrorResponse(BaseModel):
     detail: str
+    status: Optional[str] = None
+    is_conclusive: Optional[bool] = None
 
 class CropRecommendationRequest(BaseModel):
     state: str

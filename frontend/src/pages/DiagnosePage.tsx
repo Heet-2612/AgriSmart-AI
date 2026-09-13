@@ -106,20 +106,32 @@ interface DiagnosePageProps {
   initialResult?: PredictionResponse | null;
   onOpenCropRecommendation?: (suggestedCrop?: string) => void;
 }
-function getRotationCropForDiagnosis(predictedClass?: string, userCrop?: string): string {
+export function getRotationCropForDiagnosis(predictedClass?: string, userCrop?: string): string {
+  // The diagnosis handoff represents the crop that was actually diagnosed,
+  // which becomes the farmer's preceding crop for subsequent rotation planning.
+  if (predictedClass && predictedClass.trim()) {
+    const lower = predictedClass.toLowerCase();
+    if (lower.includes('potato')) return 'potato';
+    if (lower.includes('corn') || lower.includes('maize')) return 'maize';
+    if (lower.includes('tomato')) return 'tomato';
+    if (lower.includes('apple')) return 'apple';
+  }
+
+  // Fall back to normalized user-specified crop if disease class is unavailable
   if (userCrop && userCrop.trim()) {
     const c = userCrop.toLowerCase();
+    if (c.includes('potato')) return 'potato';
     if (c.includes('corn') || c.includes('maize')) return 'maize';
+    if (c.includes('tomato')) return 'tomato';
+    if (c.includes('apple')) return 'apple';
     if (c.includes('rice')) return 'rice';
     if (c.includes('wheat')) return 'wheat';
-    if (c.includes('potato')) return 'wheat';
-    if (c.includes('tomato')) return 'rice';
+    if (c.includes('cotton')) return 'cotton';
+    if (c.includes('soybean')) return 'soybean';
+    return c.trim();
   }
-  if (!predictedClass) return 'wheat';
-  const lower = predictedClass.toLowerCase();
-  if (lower.includes('potato')) return 'wheat';
-  if (lower.includes('corn')) return 'maize';
-  if (lower.includes('tomato')) return 'rice';
+
+  // Safe baseline fallback when neither diagnosis class nor user crop is known
   return 'wheat';
 }
 
@@ -358,6 +370,7 @@ export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }:
                 cropType={cropType}
                 onReset={handleRemove}
                 onPlanRotation={() => {
+                  if (predictionResult.is_conclusive === false) return;
                   const crop = getRotationCropForDiagnosis(predictionResult?.predicted_class, cropType);
                   onOpenCropRecommendation?.(crop);
                 }}

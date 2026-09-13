@@ -51,9 +51,15 @@ EXPECTED_HYBRID10_ORDER = [
 
 @pytest.fixture
 def sample_leaf_image(tmp_path):
-    """Create a synthetic test image."""
+    """Create a synthetic textured test image."""
     img_path = tmp_path / "test_leaf.jpg"
-    img = Image.new("RGB", (300, 300), color=(45, 120, 35))
+    arr = np.zeros((300, 300, 3), dtype=np.uint8)
+    for i in range(300):
+        for j in range(300):
+            arr[i, j, 0] = int(35 + 20 * np.sin(i / 10.0))
+            arr[i, j, 1] = int(120 + 40 * np.sin((i + j) / 15.0))
+            arr[i, j, 2] = int(30 + 15 * np.cos(j / 10.0))
+    img = Image.fromarray(arr)
     img.save(img_path)
     return img_path
 

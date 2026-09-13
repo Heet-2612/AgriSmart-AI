@@ -9,6 +9,9 @@ export interface PredictionResponse {
   probabilities?: Record<string, number>;
   display_name?: string;
   precaution?: string;
+  is_conclusive?: boolean;
+  status?: string;
+  leaf_detected?: boolean;
 }
 
 export interface ApiError {

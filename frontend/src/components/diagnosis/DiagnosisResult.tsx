@@ -1,4 +1,4 @@
-import { CheckCircle2, ShieldAlert, BarChart3, RefreshCw, Leaf, Tag, Sprout } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, BarChart3, RefreshCw, Leaf, Tag, Sprout, AlertTriangle } from 'lucide-react';
 import { Button } from '../Button';
 import { PredictionResponse } from '../../types';
 
@@ -20,6 +20,7 @@ export function DiagnosisResult({
   onPlanRotation,
 }: DiagnosisResultProps) {
   const displayName = result.display_name?.trim() || result.predicted_class || 'Unknown Condition';
+  const isConclusive = result.is_conclusive !== false;
   const confidencePercent =
     typeof result.confidence === 'number' && Number.isFinite(result.confidence)
       ? `${(result.confidence * 100).toFixed(1)}%`
@@ -59,13 +60,23 @@ export function DiagnosisResult({
           {/* Primary Condition Details */}
           <div className="flex-1 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-                style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
-              >
-                <CheckCircle2 size={13} aria-hidden="true" />
-                Diagnosis Output
-              </span>
+              {isConclusive ? (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
+                >
+                  <CheckCircle2 size={13} aria-hidden="true" />
+                  Diagnosis Output
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                >
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  Inconclusive Diagnosis
+                </span>
+              )}
 
               {cropType && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
@@ -109,6 +120,33 @@ export function DiagnosisResult({
 
         </div>
       </div>
+
+      {/* Inconclusive / Low-Confidence Advisory Banner */}
+      {!isConclusive && (
+        <div
+          role="alert"
+          aria-label="Inconclusive diagnosis advisory"
+          className="rounded-2xl border border-amber-300 bg-amber-50 p-5 sm:p-6 shadow-xs"
+        >
+          <div className="flex items-start gap-3.5">
+            <div
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800"
+              aria-hidden="true"
+            >
+              <AlertTriangle size={20} strokeWidth={2.2} />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-amber-950">
+                Inconclusive / Unrecognized Crop Leaf
+              </h3>
+              <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-amber-900">
+                Unable to confidently identify a supported crop leaf. Please upload a clear close-up image.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Precaution & Guidance Section (Rendered only when precaution is present) ── */}
       {result.precaution && result.precaution.trim().length > 0 && (
@@ -181,7 +219,7 @@ export function DiagnosisResult({
           <RefreshCw size={16} aria-hidden="true" />
           <span>Upload Another Image</span>
         </Button>
-        {onPlanRotation && (
+        {onPlanRotation && isConclusive && (
           <Button
             type="button"
             variant="secondary"

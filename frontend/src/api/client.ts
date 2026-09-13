@@ -2,11 +2,13 @@ import { HealthResponse, SeasonalClimate, PredictionResponse, CropRecommendation
 
 export class ApiError extends Error {
   status: number;
+  errorCode?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, errorCode?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.errorCode = errorCode;
   }
 }
 
@@ -29,7 +31,11 @@ export async function predictDisease(file: File): Promise<PredictionResponse> {
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Prediction failed with status: ${res.status}`);
+    throw new ApiError(
+      res.status,
+      errorData.detail || `Prediction failed with status: ${res.status}`,
+      errorData.status
+    );
   }
 
   return res.json();

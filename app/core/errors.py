@@ -1,10 +1,10 @@
 from typing import Optional
-from fastapi import Request, status
+from fastapi import Request, status as http_status
 from fastapi.responses import JSONResponse
 
 class AppError(Exception):
     """Base application domain exception."""
-    def __init__(self, message: str, status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR):
+    def __init__(self, message: str, status_code: int = http_status.HTTP_500_INTERNAL_SERVER_ERROR):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
@@ -12,43 +12,50 @@ class AppError(Exception):
 
 class InvalidImageError(AppError):
     """Raised when an uploaded image fails validation."""
-    def __init__(self, message: str):
-        super().__init__(message, status_code=status.HTTP_400_BAD_REQUEST)
+    def __init__(self, message: str, status: str = "invalid_image"):
+        super().__init__(message, status_code=http_status.HTTP_400_BAD_REQUEST)
+        self.status = status
+        self.is_conclusive = False
 
 
 class PayloadTooLargeError(AppError):
     """Raised when an uploaded file exceeds the size threshold."""
     def __init__(self, message: str):
-        super().__init__(message, status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+        super().__init__(message, status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
 
 
 class ModelUnavailableError(AppError):
     """Raised when the AI model inference pipeline or checkpoint is not ready."""
     def __init__(self, message: str):
-        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        super().__init__(message, status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class DatabaseError(AppError):
     """Raised when a database query or persistence operation encounters a failure."""
     def __init__(self, message: str = "Database operation failed."):
-        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        super().__init__(message, status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class InferenceError(AppError):
     """Raised when ML inference execution fails."""
     def __init__(self, message: str = "Model inference failed."):
-        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        super().__init__(message, status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ChatProviderUnavailableError(AppError):
     """Raised when both primary and fallback GenAI chat providers are unavailable."""
     def __init__(self, message: str = "Assistant temporarily unavailable. Please try again."):
-        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        super().__init__(message, status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     """Standardized handler for domain exceptions."""
+    content = {"detail": exc.message}
+    if hasattr(exc, "status") and exc.status is not None:
+        content["status"] = exc.status
+    if hasattr(exc, "is_conclusive") and exc.is_conclusive is not None:
+        content["is_conclusive"] = exc.is_conclusive
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.message}
+        content=content
     )

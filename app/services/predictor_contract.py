@@ -17,6 +17,8 @@ class PredictionOutput:
     leaf_detected: Optional[bool] = None
     roi_count: Optional[int] = None
     fallback_used: Optional[bool] = None
+    is_conclusive: Optional[bool] = True
+    status: Optional[str] = "confident" 
 
 
 @runtime_checkable
@@ -45,6 +47,8 @@ def normalize_prediction_output(raw_output: Any) -> PredictionOutput:
             leaf_detected=raw_output.get("leaf_detected"),
             roi_count=raw_output.get("roi_count"),
             fallback_used=raw_output.get("fallback_used"),
+            is_conclusive=raw_output.get("is_conclusive", True),
+            status=raw_output.get("status", "confident"),
         )
     raise ValueError(f"Unsupported predictor output format: {type(raw_output)}")
 
