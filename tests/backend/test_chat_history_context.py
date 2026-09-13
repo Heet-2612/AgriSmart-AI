@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
 
 from app.main import app
+from app.core.errors import ChatProviderUnavailableError
+from app.dependencies import get_optional_user, get_db_session
 from app.schemas import ChatAnswer, ChatContext, ChatHistoryMessage
 from app.db.models.user import User
 from app.db.models.chat import ChatMessage
@@ -61,8 +63,8 @@ def test_chat_authenticated_new_session_no_history():
                 with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock):
                     
                     mock_db = AsyncMock()
-                    app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-                    app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+                    app.dependency_overrides[get_optional_user] = lambda: mock_user
+                    app.dependency_overrides[get_db_session] = lambda: mock_db
                     
                     response = client.post("/api/chat", json=VALID_PAYLOAD)
                     
@@ -98,8 +100,8 @@ def test_chat_authenticated_existing_session_with_history():
                 with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock):
                     
                     mock_db = AsyncMock()
-                    app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-                    app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+                    app.dependency_overrides[get_optional_user] = lambda: mock_user
+                    app.dependency_overrides[get_db_session] = lambda: mock_db
                     
                     response = client.post("/api/chat", json=VALID_PAYLOAD)
                     

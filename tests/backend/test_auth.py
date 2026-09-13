@@ -71,7 +71,8 @@ def test_login_valid_credentials():
         id=1,
         email="test@example.com",
         hashed_password=hash_password("correctpassword"),
-        is_active=True
+        is_active=True,
+        email_verified=True
     )
     
     mock_db = AsyncMock()
@@ -99,7 +100,8 @@ def test_login_invalid_password():
         id=1,
         email="test@example.com",
         hashed_password=hash_password("correctpassword"),
-        is_active=True
+        is_active=True,
+        email_verified=True
     )
     
     mock_db = AsyncMock()
@@ -136,7 +138,8 @@ def test_login_inactive_user():
         id=1,
         email="test@example.com",
         hashed_password=hash_password("correctpassword"),
-        is_active=False
+        is_active=False,
+        email_verified=True
     )
     
     mock_db = AsyncMock()
@@ -273,3 +276,78 @@ def test_get_me_password_hash_not_returned():
     assert "hashed_password" not in data
     assert "password" not in data
     assert secret_hash not in str(data)
+
+# --- Tests for Email Verification ---
+
+from app.db.models.user import EmailVerificationToken
+
+def test_login_unverified_user():
+    payload = {"email": "test@example.com", "password": "correctpassword"}
+    
+    mock_user = User(
+        id=1,
+        email="test@example.com",
+        hashed_password=hash_password("correctpassword"),
+        is_active=True,
+        email_verified=False
+    )
+    
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_db.execute.return_value = mock_result
+    app.dependency_overrides[get_db_session] = lambda: mock_db
+    
+    response = client.post("/api/auth/login", json=payload)
+    
+    assert response.status_code == 401
+    assert "Email verification required" in response.json()["detail"]
+
+@patch("app.api.routes.auth.VerificationService.hash_token")
+def test_verify_email_success(mock_hash):
+    mock_hash.return_value = "hashed_token"
+    mock_token = EmailVerificationToken(
+        id=1, user_id=1, token_hash="hashed_token", expires_at=datetime.now(timezone.utc)
+    )
+    # Give it an expiration far in the future
+    mock_token.expires_at = datetime.max.replace(tzinfo=timezone.utc)
+    mock_token.used_at = None
+    
+    mock_user = User(id=1, email="test@example.com", email_verified=False)
+    
+    mock_db = AsyncMock()
+    mock_result_token = MagicMock()
+    mock_result_token.scalar_one_or_none.return_value = mock_token
+    mock_result_user = MagicMock()
+    mock_result_user.scalar_one_or_none.return_value = mock_user
+    
+    # We will simulate multiple db.execute calls by side_effect
+    mock_db.execute.side_effect = [mock_result_token, mock_result_user]
+    app.dependency_overrides[get_db_session] = lambda: mock_db
+    
+    response = client.get("/api/auth/verify-email?token=somerawtoken")
+    
+    assert response.status_code == 200
+    assert response.json()["message"] == "Email successfully verified."
+    assert mock_user.email_verified is True
+    assert mock_token.used_at is not None
+
+@patch("app.api.routes.auth.EmailService.send_verification_email")
+def test_resend_verification_success(mock_send_email):
+    payload = {"email": "test@example.com"}
+    mock_user = User(id=1, email="test@example.com", email_verified=False)
+    
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_db.execute.return_value = mock_result
+    app.dependency_overrides[get_db_session] = lambda: mock_db
+    
+    response = client.post("/api/auth/resend-verification", json=payload)
+    
+    assert response.status_code == 200
+    assert "verification link has been sent" in response.json()["message"]
+    mock_db.add.assert_called_once()
+    mock_send_email.assert_called_once()
+

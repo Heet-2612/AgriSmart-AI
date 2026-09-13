@@ -14,6 +14,7 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerificationRequired, setIsVerificationRequired] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -22,11 +23,7 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
 
     try {
       await register({ email, password });
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        onBack();
-      }
+      setIsVerificationRequired(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed. Please check your credentials.';
       setErrorMessage(msg);
@@ -34,6 +31,35 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
       setIsSubmitting(false);
     }
   };
+
+  if (isVerificationRequired) {
+    return (
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <Mail size={32} strokeWidth={2.5} />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 mb-2">Check Your Email</h1>
+          <p className="text-sm text-slate-500 mb-6">
+            We've sent a verification link to <span className="font-semibold text-slate-700">{email}</span>. 
+            Please check your inbox to verify your account before logging in.
+          </p>
+          <button
+            onClick={onNavigateLogin}
+            className="w-full mb-3 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+          >
+            Go to Login
+          </button>
+          <button
+            onClick={onBack}
+            className="w-full py-2.5 text-sm font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            Return to Home
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">

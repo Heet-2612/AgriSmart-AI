@@ -8,6 +8,7 @@ from app.main import app
 from app.schemas import ChatAnswer, ChatContext
 from app.core.errors import ChatProviderUnavailableError, SessionAccessError, DatabaseError
 from app.db.models.user import User
+from app.dependencies import get_optional_user, get_db_session
 
 client = TestClient(app)
 
@@ -55,29 +56,30 @@ def test_chat_authenticated_success():
     
     with patch("app.api.routes.chat.generate_chat_answer", return_value=mock_answer) as mock_generate:
         with patch("app.api.routes.chat.ChatHistoryService.get_or_create_session", new_callable=AsyncMock) as mock_get_or_create:
-            with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
+            with patch("app.api.routes.chat.ChatHistoryService.get_session_messages", return_value=[]) as mock_get_msgs:
+                with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
                 
-                # Setup dependency override for current_user and db
-                mock_db = AsyncMock()
-                app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-                app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
-                
-                response = client.post("/api/chat", json=VALID_PAYLOAD)
-                
-                assert response.status_code == 200
-                assert response.json()["answer"] == "You should apply fungicide."
-                
-                # Verify get_or_create_session was called to check ownership early
-                mock_get_or_create.assert_called_once_with(mock_db, uuid.UUID(VALID_PAYLOAD["session_id"]), 1)
-                
-                # Verify both user and assistant messages were appended
-                assert mock_append.call_count == 2
-                
-                # Verify commit was called
-                mock_db.commit.assert_called_once()
-                mock_db.rollback.assert_not_called()
-                
-                app.dependency_overrides.clear()
+                    # Setup dependency override for current_user and db
+                    mock_db = AsyncMock()
+                    app.dependency_overrides[get_optional_user] = lambda: mock_user
+                    app.dependency_overrides[get_db_session] = lambda: mock_db
+                    
+                    response = client.post("/api/chat", json=VALID_PAYLOAD)
+                    
+                    assert response.status_code == 200
+                    assert response.json()["answer"] == "You should apply fungicide."
+                    
+                    # Verify get_or_create_session was called to check ownership early
+                    mock_get_or_create.assert_called_once_with(mock_db, uuid.UUID(VALID_PAYLOAD["session_id"]), 1)
+                    
+                    # Verify both user and assistant messages were appended
+                    assert mock_append.call_count == 2
+                    
+                    # Verify commit was called
+                    mock_db.commit.assert_called_once()
+                    mock_db.rollback.assert_not_called()
+                    
+                    app.dependency_overrides.clear()
 
 def test_chat_authenticated_cross_user_rejection():
     """Verify that if the session belongs to another user, we get 403."""
@@ -87,8 +89,8 @@ def test_chat_authenticated_cross_user_rejection():
         mock_get_or_create.side_effect = SessionAccessError()
         
         mock_db = AsyncMock()
-        app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-        app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_optional_user] = lambda: mock_user
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.post("/api/chat", json=VALID_PAYLOAD)
         
@@ -102,19 +104,20 @@ def test_chat_authenticated_genai_failure():
     
     with patch("app.api.routes.chat.generate_chat_answer", side_effect=ChatProviderUnavailableError()):
         with patch("app.api.routes.chat.ChatHistoryService.get_or_create_session", new_callable=AsyncMock):
-            with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
+            with patch("app.api.routes.chat.ChatHistoryService.get_session_messages", return_value=[]):
+                with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
                 
-                mock_db = AsyncMock()
-                app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-                app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
-                
-                response = client.post("/api/chat", json=VALID_PAYLOAD)
-                
-                assert response.status_code == 503
-                mock_append.assert_not_called()
-                mock_db.commit.assert_not_called()
-                
-                app.dependency_overrides.clear()
+                    mock_db = AsyncMock()
+                    app.dependency_overrides[get_optional_user] = lambda: mock_user
+                    app.dependency_overrides[get_db_session] = lambda: mock_db
+                    
+                    response = client.post("/api/chat", json=VALID_PAYLOAD)
+                    
+                    assert response.status_code == 503
+                    mock_append.assert_not_called()
+                    mock_db.commit.assert_not_called()
+                    
+                    app.dependency_overrides.clear()
 
 def test_chat_authenticated_persistence_failure():
     """Verify that if persistence fails after GenAI, we rollback."""
@@ -130,19 +133,21 @@ def test_chat_authenticated_persistence_failure():
     
     with patch("app.api.routes.chat.generate_chat_answer", return_value=mock_answer):
         with patch("app.api.routes.chat.ChatHistoryService.get_or_create_session", new_callable=AsyncMock):
-            with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
+            with patch("app.api.routes.chat.ChatHistoryService.get_session_messages", return_value=[]):
+                with patch("app.api.routes.chat.ChatHistoryService.append_message", new_callable=AsyncMock) as mock_append:
                 
-                # Simulate database crashing on the second insert
-                mock_append.side_effect = [None, Exception("DB crashed")]
-                
-                mock_db = AsyncMock()
-                app.dependency_overrides[app.api.routes.chat.get_optional_user] = lambda: mock_user
-                app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
-                
-                response = client.post("/api/chat", json=VALID_PAYLOAD)
-                
-                assert response.status_code == 500
-                mock_db.commit.assert_not_called()
-                mock_db.rollback.assert_called_once()
-                
-                app.dependency_overrides.clear()
+                    # Simulate database crashing on the second insert
+                    from sqlalchemy.exc import SQLAlchemyError
+                    mock_append.side_effect = [None, SQLAlchemyError("DB crashed")]
+                    
+                    mock_db = AsyncMock()
+                    app.dependency_overrides[get_optional_user] = lambda: mock_user
+                    app.dependency_overrides[get_db_session] = lambda: mock_db
+                    
+                    response = client.post("/api/chat", json=VALID_PAYLOAD)
+                    
+                    assert response.status_code == 500
+                    mock_db.commit.assert_not_called()
+                    mock_db.rollback.assert_called_once()
+                    
+                    app.dependency_overrides.clear()

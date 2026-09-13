@@ -7,6 +7,7 @@ import jwt
 from app.main import app
 from app.db.models.user import User
 from app.config import settings
+from app.dependencies import get_db_session
 
 client = TestClient(app)
 
@@ -29,7 +30,7 @@ def test_get_me_valid_token():
         mock_db.execute.return_value = mock_result
         
         # We need to mock the dependency resolution in the app
-        app.dependency_overrides[app.dependencies.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         
@@ -85,7 +86,7 @@ def test_get_me_inactive_user():
         mock_result.scalar_one_or_none.return_value = mock_user
         mock_db.execute.return_value = mock_result
         
-        app.dependency_overrides[app.dependencies.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         
@@ -104,7 +105,7 @@ def test_get_me_nonexistent_user():
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
         
-        app.dependency_overrides[app.dependencies.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         

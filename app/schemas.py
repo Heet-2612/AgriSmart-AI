@@ -21,6 +21,12 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+class VerificationResponse(BaseModel):
+    message: str
+
 class HealthResponse(BaseModel):
     status: str = "ok"
 

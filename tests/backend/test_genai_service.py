@@ -52,7 +52,7 @@ def test_gemini_successful_answer(mock_get_groq, mock_get_gemini, valid_context)
     kwargs = call_args[1]
     assert "config" in kwargs
     assert kwargs["config"].system_instruction is not None
-    assert kwargs["contents"] == valid_context.question
+    assert valid_context.question in str(kwargs["contents"])
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")

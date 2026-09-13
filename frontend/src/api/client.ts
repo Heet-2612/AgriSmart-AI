@@ -219,3 +219,33 @@ export async function getChatSessionMessages(sessionId: string): Promise<ChatMes
 
   return res.json();
 }
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const res = await fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: 'GET',
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, errorData.detail || `Verification failed with status: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function resendVerificationEmail(email: string): Promise<{ message: string }> {
+  const res = await fetch('/api/auth/resend-verification', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, errorData.detail || `Resend failed with status: ${res.status}`);
+  }
+
+  return res.json();
+}

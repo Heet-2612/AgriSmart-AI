@@ -5,10 +5,11 @@ import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AuthProvider } from './context/AuthContext';
 import { AuthModal } from './components/auth/AuthModal';
 
-export type AppView = 'home' | 'crop-recommendation' | 'login' | 'signup';
+export type AppView = 'home' | 'crop-recommendation' | 'login' | 'signup' | 'verify-email';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -100,7 +101,14 @@ function Footer() {
 }
 
 function AppShell() {
-  const [activeView, setActiveView] = useState<AppView>('home');
+  const getInitialView = (): AppView => {
+    if (window.location.pathname === '/verify-email') {
+      return 'verify-email';
+    }
+    return 'home';
+  };
+
+  const [activeView, setActiveView] = useState<AppView>(getInitialView);
   const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation'>('home');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -151,6 +159,12 @@ function AppShell() {
             onBack={handleReturnToPrevious}
             onNavigateLogin={handleNavigateLogin}
             onSuccess={handleReturnToPrevious}
+          />
+        )}
+        {activeView === 'verify-email' && (
+          <VerifyEmailPage
+            onNavigateLogin={handleNavigateLogin}
+            onNavigateHome={handleNavigateHome}
           />
         )}
       </ErrorBoundary>

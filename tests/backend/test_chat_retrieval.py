@@ -7,6 +7,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from app.main import app
 from app.core.errors import SessionAccessError, SessionNotFoundError, DatabaseError
 from app.db.models.user import User
+from app.dependencies import get_current_user, get_db_session
 
 client = TestClient(app)
 
@@ -35,8 +36,8 @@ def test_get_sessions_authenticated():
         mock_get.return_value = mock_sessions
         
         mock_db = AsyncMock()
-        app.dependency_overrides[app.api.routes.chat.get_current_user] = lambda: mock_user
-        app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get("/api/chat/sessions")
         
@@ -67,8 +68,8 @@ def test_get_session_messages_authenticated():
         mock_get.return_value = mock_messages
         
         mock_db = AsyncMock()
-        app.dependency_overrides[app.api.routes.chat.get_current_user] = lambda: mock_user
-        app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get(f"/api/chat/sessions/{session_id}/messages")
         
@@ -93,8 +94,8 @@ def test_get_session_messages_unowned():
         mock_get.side_effect = SessionAccessError()
         
         mock_db = AsyncMock()
-        app.dependency_overrides[app.api.routes.chat.get_current_user] = lambda: mock_user
-        app.dependency_overrides[app.api.routes.chat.get_db_session] = lambda: mock_db
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        app.dependency_overrides[get_db_session] = lambda: mock_db
         
         response = client.get(f"/api/chat/sessions/{session_id}/messages")
         

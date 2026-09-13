@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta, timezone
 
-from app.schemas import UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse
-from app.db.models.user import User
+from app.schemas import UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse, ResendVerificationRequest, VerificationResponse
+from app.core.errors import AppError
+from app.db.models.user import User, EmailVerificationToken
 from app.core.database import get_db_session
 from app.dependencies import get_current_user
 from app.core.security import hash_password, verify_password, create_access_token
+from app.services.verification_service import VerificationService
+from app.services.email_service import EmailService
+from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -22,18 +27,29 @@ async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_
     # Email is normalized by the Pydantic schema EmailStr and the User model @validates hook
     
     hashed_pwd = hash_password(request.password)
-    new_user = User(email=request.email, hashed_password=hashed_pwd)
+    new_user = User(email=request.email, hashed_password=hashed_pwd, email_verified=False)
+    
+    raw_token = VerificationService.generate_token()
+    token_hash = VerificationService.hash_token(raw_token)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES)
+    new_token = EmailVerificationToken(token_hash=token_hash, expires_at=expires_at)
+    new_user.verification_tokens.append(new_token)
     
     try:
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
+        EmailService.send_verification_email(new_user.email, raw_token)
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists."
         )
+    except AppError as e:
+        await db.rollback()
+        # Raise AppError directly; it will be handled by the global app_error_handler
+        raise e
     except Exception as e:
         await db.rollback()
         raise HTTPException(
@@ -70,6 +86,13 @@ async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db_ses
     if not verify_password(request.password, user.hashed_password):
         raise auth_exception
         
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email verification required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,3 +112,71 @@ async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db_ses
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the current authenticated user details."""
     return current_user
+
+@router.get("/verify-email", response_model=VerificationResponse, status_code=status.HTTP_200_OK)
+async def verify_email(token: str, db: AsyncSession = Depends(get_db_session)):
+    token_hash = VerificationService.hash_token(token)
+    
+    result = await db.execute(select(EmailVerificationToken).where(EmailVerificationToken.token_hash == token_hash))
+    verification_token = result.scalar_one_or_none()
+    
+    if not verification_token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token.")
+        
+    if verification_token.used_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token has already been used.")
+        
+    if verification_token.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification token has expired.")
+        
+    result = await db.execute(select(User).where(User.id == verification_token.user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        
+    user.email_verified = True
+    verification_token.used_at = datetime.now(timezone.utc)
+    
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to verify email.")
+        
+    return VerificationResponse(message="Email successfully verified.")
+
+@router.post("/resend-verification", response_model=VerificationResponse, status_code=status.HTTP_200_OK)
+async def resend_verification(request: ResendVerificationRequest, db: AsyncSession = Depends(get_db_session)):
+    normalized_email = request.email.strip().lower()
+    
+    result = await db.execute(select(User).where(User.email == normalized_email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return VerificationResponse(message="If the email exists and is unverified, a new verification link has been sent.")
+        
+    if user.email_verified:
+        return VerificationResponse(message="If the email exists and is unverified, a new verification link has been sent.")
+        
+    # Expire old tokens (optional but good practice, here we just append a new one)
+    # Alternatively we can just let old ones live until their expires_at.
+    # To keep it simple, we just generate a new one.
+    raw_token = VerificationService.generate_token()
+    token_hash = VerificationService.hash_token(raw_token)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES)
+    
+    new_token = EmailVerificationToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+    db.add(new_token)
+    
+    try:
+        await db.commit()
+        EmailService.send_verification_email(user.email, raw_token)
+    except AppError as e:
+        await db.rollback()
+        raise e
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resending the email.")
+        
+    return VerificationResponse(message="If the email exists and is unverified, a new verification link has been sent.")
