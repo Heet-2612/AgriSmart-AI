@@ -3,6 +3,7 @@ import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles, ArrowR
 import { Button } from '../components/Button';
 import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
+import { BonusFeaturesSection } from '../components/crop/BonusFeaturesSection';
 import { predictDisease, ApiError } from '../api/client';
 import { PredictionResponse } from '../types';
 
@@ -103,9 +104,10 @@ function formatFileSize(bytes: number): string {
 
 interface DiagnosePageProps {
   initialResult?: PredictionResponse | null;
+  onOpenCropRecommendation?: () => void;
 }
 
-export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
+export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }: DiagnosePageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<string>('');
@@ -626,6 +628,9 @@ export function DiagnosePage({ initialResult = null }: DiagnosePageProps) {
           </div>
         </div>
       </section>
+
+      {/* ── Bonus Features Section ── */}
+      <BonusFeaturesSection onSelectCropRecommendation={onOpenCropRecommendation} />
 
       {/* ── Supported Crops Gallery (Matching Reference Design) ── */}
       <section
