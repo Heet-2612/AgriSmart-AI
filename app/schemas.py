@@ -29,6 +29,7 @@ class CropRecommendationRequest(BaseModel):
     rainfall: float = Field(..., ge=0.0, le=5000.0)
     soil_type: str
     previous_crop: str
+    season: Optional[str] = None
     top_k: int = Field(default=3, ge=1, le=10)
 
 class RankedCropRecommendation(BaseModel):
@@ -146,31 +147,45 @@ class ChatRequest(BaseModel):
 
 class WeatherLocation(BaseModel):
     name: str
-    country: str
+    country: str = "Unknown"
     latitude: float
     longitude: float
+    state: Optional[str] = None
+    district: Optional[str] = None
 
 
 class WeatherCurrent(BaseModel):
     temperature: float
-    humidity: int
+    humidity: float
     wind_speed: float
     weather_code: int
     condition: str
+    precipitation: Optional[float] = 0.0
 
 
 class WeatherDaily(BaseModel):
     temp_min: float
     temp_max: float
     precipitation_sum: float
-    precipitation_probability: int
+    precipitation_probability: float
+
+
+class SeasonalClimate(BaseModel):
+    season: str
+    temperature_mean: float
+    humidity_mean: float
+    rainfall_normal: float
+    region: str
+    soil_type_default: Optional[str] = None
 
 
 class WeatherResponse(BaseModel):
     location: WeatherLocation
     current: WeatherCurrent
     daily: WeatherDaily
-    advisories: list[str]
+    climate: Optional[SeasonalClimate] = None
+    advisories: list[str] = []
+    timestamp: Optional[datetime] = None
 
 
 # ==========================================

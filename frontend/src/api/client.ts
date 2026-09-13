@@ -1,4 +1,4 @@
-import { HealthResponse, PredictionResponse, CropRecommendationRequest, CropRecommendationResponse, WeatherResponse, IoTPresetsResponse, SustainabilityScoreRequest, SustainabilityScoreResponse } from '../types';
+import { HealthResponse, SeasonalClimate, PredictionResponse, CropRecommendationRequest, CropRecommendationResponse, WeatherResponse, IoTPresetsResponse, SustainabilityScoreRequest, SustainabilityScoreResponse } from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -113,6 +113,28 @@ export async function calculateSustainabilityScore(
     } else if (res.statusText) {
       message = `${res.statusText} (${res.status})`;
     }
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
+/**
+ * Fetch verified regional seasonal climate normals for a state/district and season.
+ */
+export async function getSeasonalClimate(
+  state: string,
+  district?: string,
+  season?: string
+): Promise<SeasonalClimate> {
+  const params = new URLSearchParams({ state: state.trim() });
+  if (district?.trim()) params.append('district', district.trim());
+  if (season?.trim()) params.append('season', season.trim());
+
+  const res = await fetch(`/api/seasonal-climate?${params.toString()}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errorData?.detail || `Seasonal climate retrieval failed with status: ${res.status}`;
     throw new ApiError(res.status, message);
   }
 

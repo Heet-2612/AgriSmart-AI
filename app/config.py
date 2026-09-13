@@ -55,5 +55,11 @@ class Settings(BaseModel):
             "OPEN_METEO_FORECAST_URL", "https://api.open-meteo.com/v1/forecast"
         )
     )
+    WEATHER_REQUEST_TIMEOUT_SECONDS: float = Field(
+        default_factory=lambda: float(os.getenv("WEATHER_REQUEST_TIMEOUT_SECONDS", "5.0"))
+    )
+    OPEN_METEO_TIMEOUT_SECONDS: float = Field(
+        default_factory=lambda: float(os.getenv("OPEN_METEO_TIMEOUT_SECONDS", "10.0"))
+    )
 
 settings = Settings()

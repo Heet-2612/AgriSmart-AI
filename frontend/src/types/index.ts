@@ -30,6 +30,8 @@ export interface CropRecommendationRequest {
   rainfall: number;
   soil_type: string;
   previous_crop: string;
+  season?: string;
+  top_k?: number;
 }
 
 export interface CropRecommendationResponse {
@@ -53,6 +55,8 @@ export interface WeatherLocation {
   country: string;
   latitude: number;
   longitude: number;
+  state?: string;
+  district?: string;
 }
 
 export interface WeatherCurrent {
@@ -70,11 +74,22 @@ export interface WeatherDaily {
   precipitation_probability: number;
 }
 
+export interface SeasonalClimate {
+  season: string;
+  temperature_mean: number;
+  humidity_mean: number;
+  rainfall_normal: number;
+  region: string;
+  soil_type_default?: string | null;
+}
+
 export interface WeatherResponse {
   location: WeatherLocation;
   current: WeatherCurrent;
   daily: WeatherDaily;
+  climate?: SeasonalClimate | null;
   advisories: string[];
+  timestamp?: string | null;
 }
 
 // ==========================================

@@ -6,6 +6,7 @@ import {
   Thermometer,
   Droplets,
   CloudRain,
+  CloudSun,
   Layers,
   Sparkles,
   AlertCircle,
@@ -17,8 +18,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { recommendCrop, ApiError } from '../api/client';
-import { CropRecommendationRequest, CropRecommendationResponse } from '../types';
+import { recommendCrop, getWeather, getSeasonalClimate, ApiError } from '../api/client';
+import { CropRecommendationRequest, CropRecommendationResponse, WeatherResponse } from '../types';
+
 
 /** Backend-supported soil types with farmer-friendly display labels */
 export const SOIL_TYPES = [
@@ -35,6 +37,12 @@ export const SOIL_TYPES = [
   { value: 'unknown', label: 'Unknown / Other' },
 ] as const;
 
+export const CROP_SEASONS = [
+  { value: 'Kharif', label: 'Kharif (Monsoon Season / Autumn Harvest)' },
+  { value: 'Rabi', label: 'Rabi (Winter Season / Spring Harvest)' },
+  { value: 'Summer', label: 'Summer / Zaid (Short Summer Season)' },
+] as const;
+
 export interface CropRecommendationFormData {
   state: string;
   district: string;
@@ -47,7 +55,7 @@ export interface CropRecommendationFormData {
 
 export type FormErrors = Partial<Record<keyof CropRecommendationFormData, string>>;
 
-interface CropRecommendationPageProps {
+export interface CropRecommendationPageProps {
   onBack: () => void;
   onSubmit?: (data: CropRecommendationFormData) => void;
   initialPreviousCrop?: string;
@@ -87,6 +95,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
     ...INITIAL_FORM_DATA,
     previous_crop: initialPreviousCrop || '',
   }));
+  const [selectedSeason, setSelectedSeason] = useState<string>('Kharif');
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -112,6 +121,96 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
     previous_crop: previousCropRef,
   };
 
+  const [isFetchingWeather, setIsFetchingWeather] = useState<boolean>(false);
+  const [weatherInfo, setWeatherInfo] = useState<WeatherResponse | null>(null);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const handleSeasonChange = async (newSeason: string) => {
+    setSelectedSeason(newSeason);
+    const st = formData.state.trim();
+    const dt = formData.district.trim();
+    if (st) {
+      try {
+        const climate = await getSeasonalClimate(st, dt, newSeason);
+        setFormData((prev) => ({
+          ...prev,
+          temperature: String(climate.temperature_mean),
+          humidity: String(climate.humidity_mean),
+          rainfall: String(climate.rainfall_normal),
+          soil_type: prev.soil_type || climate.soil_type_default || '',
+        }));
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.temperature;
+          delete next.humidity;
+          delete next.rainfall;
+          return next;
+        });
+      } catch {
+        // If climate is unmapped for state, keep existing values
+      }
+    }
+  };
+
+  const handleFetchWeather = async () => {
+    const query = formData.district.trim() || formData.state.trim();
+    if (!query) {
+      setWeatherError('Please enter a District or State to fetch live weather data.');
+      return;
+    }
+
+    setIsFetchingWeather(true);
+    setWeatherError(null);
+
+    try {
+      const weather = await getWeather(query);
+      setWeatherInfo(weather);
+
+      // Auto-populate environmental fields with verified seasonal climate normals
+      const climateData = weather.climate;
+      if (climateData) {
+        setFormData((prev) => ({
+          ...prev,
+          temperature: String(climateData?.temperature_mean ?? prev.temperature),
+          humidity: String(climateData?.humidity_mean ?? prev.humidity),
+          rainfall: String(climateData?.rainfall_normal ?? prev.rainfall),
+          soil_type: prev.soil_type || climateData?.soil_type_default || '',
+          state: prev.state || weather.location.state || '',
+          district: prev.district || weather.location.district || weather.location.name || '',
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          state: prev.state || weather.location.state || '',
+          district: prev.district || weather.location.district || weather.location.name || '',
+        }));
+      }
+
+      // Clear field errors for populated fields
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (climateData) {
+          delete next.temperature;
+          delete next.humidity;
+          delete next.rainfall;
+        }
+        if (weather.location.state) delete next.state;
+        if (weather.location.district || weather.location.name) delete next.district;
+        return next;
+      });
+    } catch (err: unknown) {
+      let message = 'Unable to fetch weather for this location.';
+      if (err instanceof ApiError) {
+        message = err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setWeatherError(message);
+    } finally {
+      setIsFetchingWeather(false);
+    }
+  };
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -130,7 +229,11 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
     if (apiError) {
       setApiError(null);
     }
+    if (weatherError) {
+      setWeatherError(null);
+    }
   };
+
 
   const validate = (): FormErrors => {
     const newErrors: FormErrors = {};
@@ -226,7 +329,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
     setApiError(null);
     setIsSubmitting(true);
 
-    // Build exact 7-field backend payload (numbers converted, trimmed)
+    // Build backend payload (7 model features + explicit season context)
     const payload: CropRecommendationRequest = {
       state: formData.state.trim(),
       district: formData.district.trim(),
@@ -235,6 +338,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
       rainfall: Number(formData.rainfall),
       soil_type: formData.soil_type,
       previous_crop: formData.previous_crop.trim(),
+      season: selectedSeason,
     };
 
     if (onSubmit) {
@@ -368,7 +472,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                 Regional geography enables accurate local agro-climatic pattern analysis.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
 
                 {/* State Field */}
                 <div>
@@ -444,17 +548,148 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                   )}
                 </div>
 
+                {/* Target Crop Season Field */}
+                <div>
+                  <label
+                    htmlFor="season-select"
+                    className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  >
+                    Target Crop Season <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="season-select"
+                      name="season"
+                      value={selectedSeason}
+                      disabled={isSubmitting}
+                      onChange={(e) => handleSeasonChange(e.target.value)}
+                      aria-label="Target Crop Season"
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3.5 text-sm text-slate-800 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      {CROP_SEASONS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
               </div>
+
+              {/* Weather Intelligence Auto-fetch Trigger */}
+              <div className="mt-4 pt-3.5 border-t border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs text-slate-500">
+                  <span>Automatically sync regional seasonal climate normals & live weather from Weather Intelligence</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleFetchWeather}
+                  disabled={isFetchingWeather || isSubmitting}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl gap-2 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 cursor-pointer transition-all active:scale-[0.98]"
+                  aria-label="Auto-fetch weather and climate data for location"
+                >
+                  {isFetchingWeather ? (
+                    <Loader2 size={14} className="animate-spin text-emerald-600" aria-hidden="true" />
+                  ) : (
+                    <CloudSun size={14} className="text-emerald-600" aria-hidden="true" />
+                  )}
+                  <span>{isFetchingWeather ? 'Fetching Weather & Climate...' : 'Fetch Weather & Climate'}</span>
+                </Button>
+              </div>
+
+              {/* Weather Lookup Notice/Error */}
+              {weatherError && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle size={14} className="text-amber-600 shrink-0" aria-hidden="true" />
+                    <span>{weatherError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWeatherError(null)}
+                    className="text-amber-700 hover:text-amber-900 font-semibold cursor-pointer text-xs"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
             </fieldset>
 
-            {/* ── Section 2: Environmental Conditions ── */}
+            {/* Weather Intelligence Live Condition & Advisory Card */}
+            {weatherInfo && (
+              <div
+                role="region"
+                aria-label="Live Weather Intelligence"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 text-left text-xs shadow-xs space-y-3"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-bold text-emerald-950 text-sm">
+                    <CloudSun size={18} className="text-emerald-600" aria-hidden="true" />
+                    <span>Live Weather • {weatherInfo.location.name}, {weatherInfo.location.country}</span>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100/90 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    {weatherInfo.current.condition}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-slate-700">
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Current Temp</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.temperature}°C</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Current Humidity</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.humidity}%</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Today's Rain (24h)</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.daily.precipitation_sum} mm</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Wind Speed</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.wind_speed} km/h</strong>
+                  </div>
+                </div>
+
+                {weatherInfo.climate && (
+                  <div className="rounded-xl bg-white/95 border border-emerald-200/80 p-3 text-[11.5px] text-emerald-900">
+                    <div className="font-bold text-emerald-950 mb-1 flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-emerald-600" aria-hidden="true" />
+                      <span>Seasonal Climate Normals Applied to Crop Model ({weatherInfo.climate.season} Season — {weatherInfo.climate.region} Region — Project-Derived Regional Baseline):</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-slate-700 text-xs mt-1.5">
+                      <span>• Mean Temp: <strong>{weatherInfo.climate.temperature_mean}°C</strong></span>
+                      <span>• Mean Humidity: <strong>{weatherInfo.climate.humidity_mean}%</strong></span>
+                      <span>• Normal Rain: <strong>{weatherInfo.climate.rainfall_normal} mm</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {weatherInfo.advisories && weatherInfo.advisories.length > 0 && (
+                  <div className="space-y-1 border-t border-emerald-200/60 pt-2.5">
+                    <span className="text-[11px] font-bold text-emerald-900 block mb-1">Agronomic Farm Advisories:</span>
+                    {weatherInfo.advisories.map((adv, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 text-emerald-800 text-[11.5px]">
+                        <span className="text-emerald-600 mt-0.5">•</span>
+                        <span>{adv}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Section 2: Seasonal Climate Conditions ── */}
             <fieldset className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6">
               <legend className="flex items-center gap-2 px-1 text-base font-bold text-slate-900">
                 <CloudRain size={18} className="text-emerald-600" aria-hidden="true" />
-                <span>Section 2 — Environmental Conditions</span>
+                <span>Section 2 — Seasonal Climate Conditions</span>
               </legend>
+
               <p className="text-xs text-slate-500 mb-5 px-1">
-                Field temperature, ambient relative humidity, and regional annual precipitation.
+                Seasonal mean temperature, relative humidity, and cumulative normal rainfall for your crop growing season (used for crop recommendation).
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
@@ -465,7 +700,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                     htmlFor="temperature-input"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Temperature <span className="text-red-500" aria-hidden="true">*</span>
+                    Seasonal Mean Temperature <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -483,7 +718,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                       disabled={isSubmitting}
                       value={formData.temperature}
                       onChange={handleChange}
-                      placeholder="e.g. 28"
+                      placeholder="e.g. 28.0"
                       aria-required="true"
                       aria-invalid={!!errors.temperature}
                       aria-describedby={errors.temperature ? 'temperature-error' : undefined}
@@ -511,7 +746,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                     htmlFor="humidity-input"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Humidity <span className="text-red-500" aria-hidden="true">*</span>
+                    Seasonal Mean Humidity <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -529,7 +764,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                       disabled={isSubmitting}
                       value={formData.humidity}
                       onChange={handleChange}
-                      placeholder="e.g. 65"
+                      placeholder="e.g. 75.0"
                       aria-required="true"
                       aria-invalid={!!errors.humidity}
                       aria-describedby={errors.humidity ? 'humidity-error' : undefined}
@@ -557,7 +792,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                     htmlFor="rainfall-input"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Rainfall <span className="text-red-500" aria-hidden="true">*</span>
+                    Seasonal Cumulative Rainfall <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -575,7 +810,7 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
                       disabled={isSubmitting}
                       value={formData.rainfall}
                       onChange={handleChange}
-                      placeholder="e.g. 750"
+                      placeholder="e.g. 1150.0"
                       aria-required="true"
                       aria-invalid={!!errors.rainfall}
                       aria-describedby={errors.rainfall ? 'rainfall-error' : undefined}

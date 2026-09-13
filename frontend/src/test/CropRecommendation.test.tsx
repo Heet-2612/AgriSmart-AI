@@ -14,8 +14,11 @@ vi.mock('../api/client', async () => {
     ...actual,
     predictDisease: vi.fn(),
     recommendCrop: vi.fn(),
+    getWeather: vi.fn(),
+    getSeasonalClimate: vi.fn(),
   };
 });
+
 
 const mockCropResponse: CropRecommendationResponse = {
   recommended_crop: 'Wheat',
@@ -357,7 +360,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
 
     const sentPayload = vi.mocked(client.recommendCrop).mock.calls[0][0];
 
-    // Assert exact 7 fields
+    // Assert payload fields (7 model features + season context)
     expect(sentPayload).toEqual({
       state: 'Gujarat',
       district: 'Ahmedabad',
@@ -366,6 +369,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
       rainfall: 750,
       soil_type: 'alluvial',
       previous_crop: 'cotton',
+      season: 'Kharif',
     });
 
     // Assert numeric fields are numbers
@@ -378,7 +382,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
     expect(sentPayload).not.toHaveProperty('phosphorus');
     expect(sentPayload).not.toHaveProperty('potassium');
     expect(sentPayload).not.toHaveProperty('ph');
-    expect(Object.keys(sentPayload)).toHaveLength(7);
+    expect(Object.keys(sentPayload)).toHaveLength(8);
   });
 
   it('displays loading state during submission and prevents duplicate submissions', async () => {
@@ -722,3 +726,157 @@ describe('Crop Recommendation API Integration — Step 4', () => {
     expect(within(resultSection).getByText(realApiResponse.explanation!)).toBeInTheDocument();
   });
 });
+
+describe('Crop Recommendation — Weather Intelligence Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders the Fetch Weather & Climate button in the Location section', () => {
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
+    expect(fetchWeatherBtn).toBeInTheDocument();
+    expect(fetchWeatherBtn).toBeEnabled();
+  });
+
+  it('prompts user if clicking Fetch Weather without entering District or State', async () => {
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
+    fireEvent.click(fetchWeatherBtn);
+
+    expect(await screen.findByText(/please enter a district or state/i)).toBeInTheDocument();
+    expect(client.getWeather).not.toHaveBeenCalled();
+  });
+
+  it('fetches weather, auto-populates seasonal climate normals, and displays live advisory card', async () => {
+    const mockWeatherData = {
+      location: {
+        name: 'Ahmedabad',
+        country: 'India',
+        latitude: 23.02,
+        longitude: 72.57,
+        state: 'Gujarat',
+        district: 'Ahmedabad',
+      },
+      current: {
+        temperature: 31.5,
+        humidity: 62.0,
+        wind_speed: 14.2,
+        weather_code: 1,
+        condition: 'Mainly clear',
+        precipitation: 0.0,
+      },
+      daily: {
+        temp_min: 22.0,
+        temp_max: 35.0,
+        precipitation_sum: 12.0,
+        precipitation_probability: 25.0,
+      },
+      climate: {
+        season: 'Kharif',
+        region: 'West',
+        temperature_mean: 31.0,
+        humidity_mean: 72.0,
+        rainfall_normal: 546.0,
+        soil_type_default: 'alluvial',
+      },
+      advisories: [
+        'Rain is expected today. Postpone irrigation where possible.',
+        'Weather conditions are generally suitable for routine farm activities.',
+      ],
+      timestamp: '2026-09-13T12:00:00Z',
+    };
+
+    vi.mocked(client.getWeather).mockResolvedValueOnce(mockWeatherData);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    const districtInput = screen.getByLabelText(/district/i) as HTMLInputElement;
+    fireEvent.change(districtInput, { target: { value: 'Ahmedabad' } });
+
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
+    fireEvent.click(fetchWeatherBtn);
+
+    await waitFor(() => {
+      expect(client.getWeather).toHaveBeenCalledWith('Ahmedabad');
+    });
+
+    const weatherCard = await screen.findByRole('region', { name: /live weather intelligence/i });
+    expect(weatherCard).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/Live Weather • Ahmedabad, India/i)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/31.5°C/)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/62%/)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/12 mm/)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/Rain is expected today/i)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/Seasonal Climate Normals Applied to Crop Model/i)).toBeInTheDocument();
+
+    const tempInput = screen.getByLabelText(/temperature/i) as HTMLInputElement;
+    const humInput = screen.getByLabelText(/humidity/i) as HTMLInputElement;
+    const rainInput = screen.getByLabelText(/rainfall/i) as HTMLInputElement;
+
+    // Environmental fields receive verified seasonal climate normals
+    expect(tempInput.value).toBe('31');
+    expect(humInput.value).toBe('72');
+    expect(rainInput.value).toBe('546');
+  });
+
+  it('displays graceful error message when weather service fails without breaking form', async () => {
+    vi.mocked(client.getWeather).mockRejectedValueOnce(
+      new ApiError(503, 'Weather service is temporarily unavailable (503).')
+    );
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'RemoteVillage' } });
+
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
+    fireEvent.click(fetchWeatherBtn);
+
+    expect(await screen.findByText(/weather service is temporarily unavailable/i)).toBeInTheDocument();
+
+    // Farmer can still type manual temperature
+    const tempInput = screen.getByLabelText(/temperature/i);
+    fireEvent.change(tempInput, { target: { value: '30' } });
+    expect((tempInput as HTMLInputElement).value).toBe('30');
+  });
+
+  it('updates seasonal climate values when farmer explicitly changes the crop season', async () => {
+    const mockRabiClimate = {
+      season: 'Rabi',
+      region: 'West',
+      temperature_mean: 22.0,
+      humidity_mean: 45.0,
+      rainfall_normal: 23.4,
+      soil_type_default: 'alluvial',
+    };
+
+    vi.mocked(client.getSeasonalClimate).mockResolvedValueOnce(mockRabiClimate);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    // Enter Gujarat state
+    fireEvent.change(screen.getByLabelText(/state/i), { target: { value: 'Gujarat' } });
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'Ahmedabad' } });
+
+    // Explicitly select Rabi season
+    const seasonSelect = screen.getByLabelText(/target crop season/i);
+    fireEvent.change(seasonSelect, { target: { value: 'Rabi' } });
+
+    await waitFor(() => {
+      expect(client.getSeasonalClimate).toHaveBeenCalledWith('Gujarat', 'Ahmedabad', 'Rabi');
+    });
+
+    const tempInput = screen.getByLabelText(/temperature/i) as HTMLInputElement;
+    const humInput = screen.getByLabelText(/humidity/i) as HTMLInputElement;
+    const rainInput = screen.getByLabelText(/rainfall/i) as HTMLInputElement;
+
+    // Environmental fields receive verified Rabi seasonal climate normals (22°C, 45%, 23.4mm)
+    expect(tempInput.value).toBe('22');
+    expect(humInput.value).toBe('45');
+    expect(rainInput.value).toBe('23.4');
+  });
+});
+
+
