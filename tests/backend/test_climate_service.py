@@ -188,3 +188,39 @@ def test_rf_model_receives_exact_seasonal_values():
     assert result["input_features"]["rainfall"] == 546.0
 
 
+def test_missing_season_uses_calendar_fallback_safely():
+    """Verify that omitting season in get_seasonal_climate resolves to a valid agricultural season without error."""
+    climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season=None)
+    assert climate.season in ("Kharif", "Rabi", "Summer")
+    assert climate.temperature_mean > 0.0
+    assert climate.humidity_mean > 0.0
+    assert climate.rainfall_normal > 0.0
+
+
+def test_zaid_alias_resolves_to_summer_profile():
+    """Verify that specifying 'Zaid' resolves to the Summer climate profile."""
+    zaid_climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season="Zaid")
+    summer_climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season="Summer")
+    assert zaid_climate.season == "Summer"
+    assert zaid_climate.temperature_mean == summer_climate.temperature_mean
+    assert zaid_climate.rainfall_normal == summer_climate.rainfall_normal
+
+
+def test_rf_receives_exactly_seven_features():
+    """Verify RF model receives exactly seven feature inputs without season as an 8th model feature."""
+    climate = get_seasonal_climate(state="Gujarat", district="Ahmedabad", season="Rabi")
+    result = predict_crop(
+        state="Gujarat",
+        district="Ahmedabad",
+        temperature=climate.temperature_mean,
+        humidity=climate.humidity_mean,
+        rainfall=climate.rainfall_normal,
+        soil_type="Alluvial",
+        previous_crop="cotton",
+        top_k=3,
+    )
+    expected_features = {"state", "district", "temperature", "humidity", "rainfall", "soil_type", "previous_crop"}
+    assert set(result["input_features"].keys()) == expected_features
+
+
+

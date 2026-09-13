@@ -360,7 +360,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
 
     const sentPayload = vi.mocked(client.recommendCrop).mock.calls[0][0];
 
-    // Assert exact 7 fields
+    // Assert payload fields (7 model features + season context)
     expect(sentPayload).toEqual({
       state: 'Gujarat',
       district: 'Ahmedabad',
@@ -369,6 +369,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
       rainfall: 750,
       soil_type: 'alluvial',
       previous_crop: 'cotton',
+      season: 'Kharif',
     });
 
     // Assert numeric fields are numbers
@@ -381,7 +382,7 @@ describe('Crop Recommendation API Integration — Step 4', () => {
     expect(sentPayload).not.toHaveProperty('phosphorus');
     expect(sentPayload).not.toHaveProperty('potassium');
     expect(sentPayload).not.toHaveProperty('ph');
-    expect(Object.keys(sentPayload)).toHaveLength(7);
+    expect(Object.keys(sentPayload)).toHaveLength(8);
   });
 
   it('displays loading state during submission and prevents duplicate submissions', async () => {

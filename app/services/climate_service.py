@@ -1,8 +1,8 @@
 """Climate Intelligence Service module.
 
-Provides authoritative empirical seasonal climate normals (temperature mean,
-humidity mean, cumulative seasonal rainfall normal) derived from India Meteorological
-Department (IMD) 1981-2010 district climatological profiles.
+Provides empirical seasonal climate normals (temperature mean,
+humidity mean, cumulative seasonal rainfall normal) based on project-derived
+regional/state climate heuristics from baseline rainfall normals and regional seasonal profiles.
 
 Strictly separates seasonal agro-climatic normals used by the Crop Recommendation
 Random Forest model from real-time instantaneous weather measurements.
@@ -254,7 +254,6 @@ STATE_REGION_MAP: Dict[str, str] = {
     "Haryana": "North",
     "Uttar Pradesh": "North",
     "Madhya Pradesh": "Central",
-    "Chhattisgarh": "Central",
     "Maharashtra": "Central",
     "Gujarat": "West",
     "Rajasthan": "West",

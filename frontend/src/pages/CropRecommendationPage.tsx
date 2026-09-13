@@ -324,7 +324,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     setApiError(null);
     setIsSubmitting(true);
 
-    // Build exact 7-field backend payload (numbers converted, trimmed)
+    // Build backend payload (7 model features + explicit season context)
     const payload: CropRecommendationRequest = {
       state: formData.state.trim(),
       district: formData.district.trim(),
@@ -333,6 +333,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
       rainfall: Number(formData.rainfall),
       soil_type: formData.soil_type,
       previous_crop: formData.previous_crop.trim(),
+      season: selectedSeason,
     };
 
     if (onSubmit) {
