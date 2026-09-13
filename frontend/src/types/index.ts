@@ -42,3 +42,37 @@ export interface CropRecommendationResponse {
   model_version?: string;
   input_features?: Record<string, unknown>;
 }
+
+export interface WeatherLocation {
+  name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  state?: string;
+  district?: string;
+}
+
+export interface WeatherCurrent {
+  temperature: number;
+  humidity: number;
+  wind_speed: number;
+  weather_code: number;
+  condition: string;
+  precipitation?: number;
+}
+
+export interface WeatherDaily {
+  temp_min: number;
+  temp_max: number;
+  precipitation_sum: number;
+  precipitation_probability: number;
+}
+
+export interface WeatherResponse {
+  location: WeatherLocation;
+  current: WeatherCurrent;
+  daily: WeatherDaily;
+  advisories: string[];
+  timestamp?: string;
+}
+

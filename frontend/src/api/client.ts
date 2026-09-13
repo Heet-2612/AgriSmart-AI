@@ -1,4 +1,10 @@
-import { HealthResponse, PredictionResponse, CropRecommendationRequest, CropRecommendationResponse } from '../types';
+import {
+  HealthResponse,
+  PredictionResponse,
+  CropRecommendationRequest,
+  CropRecommendationResponse,
+  WeatherResponse,
+} from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -65,3 +71,20 @@ export async function recommendCrop(
 }
 
 export const recommendCrops = recommendCrop;
+
+export async function getWeather(location: string): Promise<WeatherResponse> {
+  const trimmed = location.trim();
+  if (!trimmed) {
+    throw new ApiError(400, 'Location query cannot be empty.');
+  }
+
+  const res = await fetch(`/api/weather?location=${encodeURIComponent(trimmed)}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errorData?.detail || `Weather retrieval failed with status: ${res.status}`;
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+

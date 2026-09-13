@@ -6,6 +6,7 @@ import {
   Thermometer,
   Droplets,
   CloudRain,
+  CloudSun,
   Layers,
   Sparkles,
   AlertCircle,
@@ -17,8 +18,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { recommendCrop, ApiError } from '../api/client';
-import { CropRecommendationRequest, CropRecommendationResponse } from '../types';
+import { recommendCrop, getWeather, ApiError } from '../api/client';
+import { CropRecommendationRequest, CropRecommendationResponse, WeatherResponse } from '../types';
+
 
 /** Backend-supported soil types with farmer-friendly display labels */
 export const SOIL_TYPES = [
@@ -107,6 +109,57 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     previous_crop: previousCropRef,
   };
 
+  const [isFetchingWeather, setIsFetchingWeather] = useState<boolean>(false);
+  const [weatherInfo, setWeatherInfo] = useState<WeatherResponse | null>(null);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const handleFetchWeather = async () => {
+    const query = formData.district.trim() || formData.state.trim();
+    if (!query) {
+      setWeatherError('Please enter a District or State to fetch live weather data.');
+      return;
+    }
+
+    setIsFetchingWeather(true);
+    setWeatherError(null);
+
+    try {
+      const weather = await getWeather(query);
+      setWeatherInfo(weather);
+
+      // Auto-populate environmental fields with normalized values
+      setFormData((prev) => ({
+        ...prev,
+        temperature: String(weather.current.temperature),
+        humidity: String(weather.current.humidity),
+        rainfall: String(weather.daily.precipitation_sum > 0 ? weather.daily.precipitation_sum : (prev.rainfall || '750')),
+        state: prev.state || weather.location.state || '',
+        district: prev.district || weather.location.district || weather.location.name || '',
+      }));
+
+      // Clear field errors for populated fields
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.temperature;
+        delete next.humidity;
+        delete next.rainfall;
+        if (weather.location.state) delete next.state;
+        if (weather.location.district || weather.location.name) delete next.district;
+        return next;
+      });
+    } catch (err: unknown) {
+      let message = 'Unable to fetch weather for this location.';
+      if (err instanceof ApiError) {
+        message = err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setWeatherError(message);
+    } finally {
+      setIsFetchingWeather(false);
+    }
+  };
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -125,7 +178,11 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     if (apiError) {
       setApiError(null);
     }
+    if (weatherError) {
+      setWeatherError(null);
+    }
   };
+
 
   const validate = (): FormErrors => {
     const newErrors: FormErrors = {};
@@ -440,7 +497,96 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                 </div>
 
               </div>
+
+              {/* Weather Intelligence Auto-fetch Trigger */}
+              <div className="mt-4 pt-3.5 border-t border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs text-slate-500">
+                  <span>Automatically sync real-time temperature, humidity & rainfall from Weather Intelligence</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleFetchWeather}
+                  disabled={isFetchingWeather || isSubmitting}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl gap-2 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 cursor-pointer transition-all active:scale-[0.98]"
+                  aria-label="Auto-fetch weather data for location"
+                >
+                  {isFetchingWeather ? (
+                    <Loader2 size={14} className="animate-spin text-emerald-600" aria-hidden="true" />
+                  ) : (
+                    <CloudSun size={14} className="text-emerald-600" aria-hidden="true" />
+                  )}
+                  <span>{isFetchingWeather ? 'Fetching Live Weather...' : 'Fetch Live Weather'}</span>
+                </Button>
+              </div>
+
+              {/* Weather Lookup Notice/Error */}
+              {weatherError && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle size={14} className="text-amber-600 shrink-0" aria-hidden="true" />
+                    <span>{weatherError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWeatherError(null)}
+                    className="text-amber-700 hover:text-amber-900 font-semibold cursor-pointer text-xs"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
             </fieldset>
+
+            {/* Weather Intelligence Live Condition & Advisory Card */}
+            {weatherInfo && (
+              <div
+                role="region"
+                aria-label="Live Weather Intelligence"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 text-left text-xs shadow-xs"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 font-bold text-emerald-950 text-sm">
+                    <CloudSun size={18} className="text-emerald-600" aria-hidden="true" />
+                    <span>Weather Intelligence • {weatherInfo.location.name}, {weatherInfo.location.country}</span>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100/90 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    {weatherInfo.current.condition}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3 text-slate-700">
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Temperature</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.temperature}°C</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Humidity</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.humidity}%</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Precipitation</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.daily.precipitation_sum} mm</strong>
+                  </div>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100">
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Wind Speed</span>
+                    <strong className="text-slate-900 text-sm">{weatherInfo.current.wind_speed} km/h</strong>
+                  </div>
+                </div>
+
+                {weatherInfo.advisories && weatherInfo.advisories.length > 0 && (
+                  <div className="space-y-1 border-t border-emerald-200/60 pt-2.5">
+                    <span className="text-[11px] font-bold text-emerald-900 block mb-1">Agronomic Weather Advisories:</span>
+                    {weatherInfo.advisories.map((adv, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 text-emerald-800 text-[11.5px]">
+                        <span className="text-emerald-600 mt-0.5">•</span>
+                        <span>{adv}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Section 2: Environmental Conditions ── */}
             <fieldset className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6">
@@ -448,6 +594,7 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
                 <CloudRain size={18} className="text-emerald-600" aria-hidden="true" />
                 <span>Section 2 — Environmental Conditions</span>
               </legend>
+
               <p className="text-xs text-slate-500 mb-5 px-1">
                 Field temperature, ambient relative humidity, and regional annual precipitation.
               </p>
