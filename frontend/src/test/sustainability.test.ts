@@ -47,8 +47,8 @@ describe('Sustainability Library & Calculation Engine', () => {
       soil_type: 'Black',
       farm_area_hectares: 0.1,
       action: 'delay',
-      temperature_celsius: 26.0,
-      humidity_percent: 65.0,
+      temperature_celsius: 24.0,
+      humidity_percent: 55.0,
       rain_probability_percent: 75.0,
       expected_rainfall_mm: 15.0,
       soil_moisture_percent: 32.0,
@@ -58,22 +58,23 @@ describe('Sustainability Library & Calculation Engine', () => {
     expect(res.score_label).toBe('Excellent');
     expect(res.breakdown.water_conservation.points).toBe(40.0);
     expect(res.breakdown.crop_rotation_compatibility.points).toBe(15.0);
-    expect(res.water_impact.impact_type).toBe('saved');
+    expect(res.water_impact.impact_type).toBe('avoided');
     expect(res.water_impact.litres).toBeGreaterThan(0);
+    expect(res.water_impact.label).toContain('Potential Irrigation Water Avoided');
   });
 
   it('penalizes score when irrigating into already waterlogged soil before heavy rain', () => {
     const res = calculateClientSustainabilityScore({
       crop: 'Rice',
       previous_crop: 'Rice', // Monoculture
-      soil_type: 'Alluvial',
+      soil_type: 'Clay',
       farm_area_hectares: 0.1,
       action: 'irrigate_now', // Irrigating into waterlogged soil before rain
       temperature_celsius: 38.0,
       humidity_percent: 90.0,
       rain_probability_percent: 85.0,
       expected_rainfall_mm: 20.0,
-      soil_moisture_percent: 48.0,
+      soil_moisture_percent: 50.0,
     });
 
     expect(res.total_score).toBeLessThan(50);
@@ -89,7 +90,7 @@ describe('Sustainability Library & Calculation Engine', () => {
       previous_crop: 'Rice',
       farm_area_hectares: 0.5,
       action: 'delay' as const,
-      temperature_celsius: 22.0,
+      temperature_celsius: 20.0,
       humidity_percent: 55.0,
       rain_probability_percent: 20.0,
       expected_rainfall_mm: 0.0,
@@ -119,6 +120,7 @@ describe('Sustainability Library & Calculation Engine', () => {
 
     // 30 L/min * 60 min * (0.2 / 0.1) = 3,600 Litres
     expect(res.water_impact.litres).toBe(3600);
-    expect(res.water_impact.impact_type).toBe('saved');
+    expect(res.water_impact.impact_type).toBe('avoided');
+    expect(res.water_impact.label).toContain('Potential Irrigation Water Avoided: 3,600 L');
   });
 });

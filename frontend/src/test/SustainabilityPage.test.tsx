@@ -17,8 +17,8 @@ const mockScoreResponse = {
   recommendation: 'Delay irrigation by 24h to maximize water conservation.',
   water_impact: {
     litres: 2400,
-    impact_type: 'saved',
-    label: '2,400 L Water Conserved',
+    impact_type: 'avoided',
+    label: 'Potential Irrigation Water Avoided: 2,400 L',
     formula_basis: '40 L/min × 60 min (Simulated IoT Telemetry)',
   },
   comparison: {
@@ -27,7 +27,7 @@ const mockScoreResponse = {
       score: 82,
       score_label: 'Excellent',
       water_impact_litres: 2400,
-      water_impact_type: 'saved',
+      water_impact_type: 'avoided',
     },
     irrigate_now: {
       action: 'irrigate_now',

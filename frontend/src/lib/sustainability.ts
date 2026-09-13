@@ -2,16 +2,15 @@
  * Sustainability & Simulated IoT Calculation Library for AgriSmart AI.
  *
  * Implements deterministic 4-dimensional scoring (0–100 scale):
- * 1. Water Conservation & Irrigation Timing (0–40 pts)
- * 2. Microclimate & Weather Alignment (0–30 pts)
- * 3. Soil Moisture & Root-Zone Balance (0–15 pts)
+ * 1. Water Conservation & Irrigation Timing (0–40 pts) - Soil-Profile Aware
+ * 2. Microclimate & Weather Alignment (0–30 pts) - Crop-Aware
+ * 3. Soil Moisture & Root-Zone Balance (0–15 pts) - Soil-Profile Aware
  * 4. Crop Rotation & Agro-Ecological Compatibility (0–15 pts)
  */
 
 import {
   SensorTelemetry,
   IoTPreset,
-  IrrigationAction,
   ScoreLabel,
   SustainabilityScoreRequest,
   SustainabilityScoreResponse,
@@ -50,31 +49,31 @@ export const IOT_PRESETS: IoTPreset[] = [
   },
   {
     preset_id: 'saturated_heavy',
-    name: 'Over-Saturated Soil (Waterlogged)',
-    description: 'Excess moisture (48%) presenting hypoxia and root rot risk.',
+    name: 'Saturated Heavy Soil',
+    description: 'Waterlogged root-zone (48%), severe over-irrigation risk.',
     telemetry: {
       soil_moisture_percent: 48.0,
-      soil_temperature_celsius: 21.5,
+      soil_temperature_celsius: 21.0,
       irrigation_flow_rate_lpm: 25.0,
       irrigation_duration_minutes: 45,
       water_tank_level_percent: 95.0,
       soil_ph: 6.5,
-      soil_ec_ds_m: 1.0,
+      soil_ec_ds_m: 0.9,
       is_simulated: true,
     },
   },
   {
     preset_id: 'heat_stress',
-    name: 'High Heat & Transpiration Stress',
-    description: 'Elevated soil temperature (36°C) and rapid evapotranspiration.',
+    name: 'Extreme Heat & Rapid ET',
+    description: 'High soil temperature (34°C) causing accelerated moisture depletion.',
     telemetry: {
-      soil_moisture_percent: 23.0,
-      soil_temperature_celsius: 36.0,
+      soil_moisture_percent: 22.0,
+      soil_temperature_celsius: 34.0,
       irrigation_flow_rate_lpm: 40.0,
       irrigation_duration_minutes: 75,
-      water_tank_level_percent: 50.0,
-      soil_ph: 7.0,
-      soil_ec_ds_m: 1.8,
+      water_tank_level_percent: 40.0,
+      soil_ph: 7.5,
+      soil_ec_ds_m: 2.1,
       is_simulated: true,
     },
   },
@@ -86,157 +85,340 @@ const LEGUMES = ['chickpea', 'moong', 'soybean', 'pulses', 'groundnut', 'pigeonp
 const CEREALS = ['wheat', 'rice', 'maize', 'bajra', 'jowar', 'barley'];
 const CASH_CROPS = ['cotton', 'sugarcane', 'potato', 'tobacco'];
 
+// 1. Soil Profiles
+interface SoilProfileConfig {
+  name: string;
+  wilting_point: number;
+  mild_deficit: number;
+  optimal_min: number;
+  optimal_max: number;
+  elevated: number;
+  saturation: number;
+}
+
+const SOIL_PROFILES: Record<string, SoilProfileConfig> = {
+  clay: {
+    name: 'Clay Soil Profile',
+    wilting_point: 20.0,
+    mild_deficit: 28.0,
+    optimal_min: 28.0,
+    optimal_max: 42.0,
+    elevated: 46.0,
+    saturation: 48.0,
+  },
+  sandy: {
+    name: 'Sandy / Coarse Profile',
+    wilting_point: 8.0,
+    mild_deficit: 14.0,
+    optimal_min: 14.0,
+    optimal_max: 24.0,
+    elevated: 28.0,
+    saturation: 32.0,
+  },
+  black: {
+    name: 'Black Cotton / Vertisol Profile',
+    wilting_point: 18.0,
+    mild_deficit: 26.0,
+    optimal_min: 26.0,
+    optimal_max: 42.0,
+    elevated: 46.0,
+    saturation: 50.0,
+  },
+  loam: {
+    name: 'Loam Reference Profile (Simulated Standard)',
+    wilting_point: 15.0,
+    mild_deficit: 22.0,
+    optimal_min: 22.0,
+    optimal_max: 38.0,
+    elevated: 42.0,
+    saturation: 45.0,
+  },
+};
+
+function resolveSoilProfile(soilType?: string, presetId?: string): SoilProfileConfig {
+  const st = (soilType || '').toLowerCase().trim();
+  if (st.includes('clay')) return SOIL_PROFILES.clay;
+  if (st.includes('sand')) return SOIL_PROFILES.sandy;
+  if (st.includes('black') || st.includes('vertisol')) return SOIL_PROFILES.black;
+  if (presetId === 'saturated_heavy') return SOIL_PROFILES.clay;
+  return SOIL_PROFILES.loam;
+}
+
+// 2. Crop Microclimate Windows
+interface CropWeatherProfile {
+  name: string;
+  temp_optimal: [number, number];
+  temp_stress: number;
+  temp_chill: number;
+  rh_optimal: [number, number];
+  rh_fungal_risk: number;
+}
+
+const CROP_WEATHER_PROFILES: Record<string, CropWeatherProfile> = {
+  rice: {
+    name: 'Rice (Warm Kharif Cereal)',
+    temp_optimal: [22.0, 33.0],
+    temp_stress: 37.0,
+    temp_chill: 16.0,
+    rh_optimal: [60.0, 85.0],
+    rh_fungal_risk: 90.0,
+  },
+  maize: {
+    name: 'Maize (Warm Cereal)',
+    temp_optimal: [20.0, 32.0],
+    temp_stress: 36.0,
+    temp_chill: 14.0,
+    rh_optimal: [45.0, 75.0],
+    rh_fungal_risk: 85.0,
+  },
+  cotton: {
+    name: 'Cotton (Semi-Arid Cash Crop)',
+    temp_optimal: [23.0, 35.0],
+    temp_stress: 38.0,
+    temp_chill: 18.0,
+    rh_optimal: [40.0, 70.0],
+    rh_fungal_risk: 85.0,
+  },
+  wheat: {
+    name: 'Wheat (Cool Rabi Cereal)',
+    temp_optimal: [14.0, 25.0],
+    temp_stress: 30.0,
+    temp_chill: 6.0,
+    rh_optimal: [40.0, 70.0],
+    rh_fungal_risk: 85.0,
+  },
+  chickpea: {
+    name: 'Chickpea (Rabi Pulse)',
+    temp_optimal: [15.0, 26.0],
+    temp_stress: 31.0,
+    temp_chill: 7.0,
+    rh_optimal: [35.0, 65.0],
+    rh_fungal_risk: 80.0,
+  },
+  pigeonpea: {
+    name: 'Pigeonpea (Warm Kharif Pulse)',
+    temp_optimal: [20.0, 34.0],
+    temp_stress: 38.0,
+    temp_chill: 14.0,
+    rh_optimal: [45.0, 80.0],
+    rh_fungal_risk: 85.0,
+  },
+  sugarcane: {
+    name: 'Sugarcane (Tropical Perennial)',
+    temp_optimal: [24.0, 36.0],
+    temp_stress: 40.0,
+    temp_chill: 18.0,
+    rh_optimal: [55.0, 85.0],
+    rh_fungal_risk: 90.0,
+  },
+  tomato: {
+    name: 'Tomato (Solanaceous Vegetable)',
+    temp_optimal: [18.0, 28.0],
+    temp_stress: 34.0,
+    temp_chill: 12.0,
+    rh_optimal: [45.0, 70.0],
+    rh_fungal_risk: 80.0,
+  },
+  potato: {
+    name: 'Potato (Tuber Crop)',
+    temp_optimal: [16.0, 24.0],
+    temp_stress: 29.0,
+    temp_chill: 8.0,
+    rh_optimal: [50.0, 80.0],
+    rh_fungal_risk: 85.0,
+  },
+};
+
+const DEFAULT_WEATHER_PROFILE: CropWeatherProfile = {
+  name: 'General Agronomic Microclimate Index',
+  temp_optimal: [18.0, 32.0],
+  temp_stress: 35.0,
+  temp_chill: 12.0,
+  rh_optimal: [40.0, 75.0],
+  rh_fungal_risk: 85.0,
+};
+
+function resolveCropWeatherProfile(crop?: string): CropWeatherProfile {
+  const c = (crop || '').toLowerCase().trim();
+  for (const [key, prof] of Object.entries(CROP_WEATHER_PROFILES)) {
+    if (c.includes(key)) return prof;
+  }
+  return DEFAULT_WEATHER_PROFILE;
+}
+
 export function getScoreLabel(score: number): ScoreLabel {
   if (score >= 80) return 'Excellent';
   if (score >= 60) return 'Good';
   return 'Needs Improvement';
 }
 
-export function validateSustainabilityForm(values: {
-  crop: string;
-  farm_area_hectares: string;
-  temperature_celsius: string;
-  humidity_percent: string;
-  rain_probability_percent: string;
-  expected_rainfall_mm: string;
-  soil_moisture_percent: string;
-}): Record<string, string> {
+export function validateSustainabilityForm(data: Record<string, string>): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!values.crop || !values.crop.trim()) {
-    errors.crop = 'Crop name is required.';
+  if (!data.crop || !data.crop.trim()) {
+    errors.crop = 'Target crop is required';
   }
 
-  const area = Number(values.farm_area_hectares);
-  if (!Number.isFinite(area) || area <= 0) {
-    errors.farm_area_hectares = 'Farm area must be greater than 0 hectares.';
+  const area = Number(data.farm_area_hectares);
+  if (isNaN(area) || area <= 0 || area > 1000) {
+    errors.farm_area_hectares = 'Area must be between 0.01 and 1000 ha';
   }
 
-  const temp = Number(values.temperature_celsius);
-  if (!Number.isFinite(temp) || temp < -10 || temp > 60) {
-    errors.temperature_celsius = 'Temperature must be between -10°C and 60°C.';
+  const temp = Number(data.temperature_celsius);
+  if (isNaN(temp) || temp < -10 || temp > 60) {
+    errors.temperature_celsius = 'Temperature must be between -10°C and 60°C';
   }
 
-  const hum = Number(values.humidity_percent);
-  if (!Number.isFinite(hum) || hum < 0 || hum > 100) {
-    errors.humidity_percent = 'Humidity must be between 0% and 100%.';
+  const hum = Number(data.humidity_percent);
+  if (isNaN(hum) || hum < 0 || hum > 100) {
+    errors.humidity_percent = 'Humidity must be between 0% and 100%';
   }
 
-  const rainProb = Number(values.rain_probability_percent);
-  if (!Number.isFinite(rainProb) || rainProb < 0 || rainProb > 100) {
-    errors.rain_probability_percent = 'Rain probability must be between 0% and 100%.';
+  const rainProb = Number(data.rain_probability_percent);
+  if (isNaN(rainProb) || rainProb < 0 || rainProb > 100) {
+    errors.rain_probability_percent = 'Rain probability must be 0–100%';
   }
 
-  const rainfall = Number(values.expected_rainfall_mm);
-  if (!Number.isFinite(rainfall) || rainfall < 0) {
-    errors.expected_rainfall_mm = 'Rainfall cannot be negative.';
+  const rainMm = Number(data.expected_rainfall_mm);
+  if (isNaN(rainMm) || rainMm < 0 || rainMm > 500) {
+    errors.expected_rainfall_mm = 'Rainfall must be 0–500 mm';
   }
 
-  const moisture = Number(values.soil_moisture_percent);
-  if (!Number.isFinite(moisture) || moisture < 0 || moisture > 100) {
-    errors.soil_moisture_percent = 'Soil moisture must be between 0% and 100%.';
+  const moist = Number(data.soil_moisture_percent);
+  if (isNaN(moist) || moist < 0 || moist > 100) {
+    errors.soil_moisture_percent = 'Moisture must be 0–100%';
   }
 
   return errors;
 }
 
-/**
- * Deterministic client calculation matching backend formula for offline/instant evaluation.
- */
 export function calculateClientSustainabilityScore(
   req: SustainabilityScoreRequest
 ): SustainabilityScoreResponse {
-  const action: IrrigationAction = req.action || 'delay';
-  const rainProb = req.rain_probability_percent ?? 0;
-  const rainfall = req.expected_rainfall_mm ?? 0;
+  const rainProb = req.rain_probability_percent ?? 0.0;
+  const rainMm = req.expected_rainfall_mm ?? 0.0;
+  const moisture = req.soil_moisture_percent ?? req.telemetry?.soil_moisture_percent ?? 30.0;
   const temp = req.temperature_celsius;
   const humidity = req.humidity_percent;
-  const area = req.farm_area_hectares && req.farm_area_hectares > 0 ? req.farm_area_hectares : 0.1;
-  const telemetry = req.telemetry || DEFAULT_IOT_TELEMETRY;
-  const moisture = req.soil_moisture_percent ?? telemetry.soil_moisture_percent;
+  const action = req.action ?? 'delay';
+  const farmArea = req.farm_area_hectares ?? 0.1;
 
-  const rainImminent = rainProb >= 60 && rainfall >= 5.0;
+  const soilProfile = resolveSoilProfile(req.soil_type, req.telemetry?.preset_id);
+  const cropWeatherProfile = resolveCropWeatherProfile(req.crop);
 
-  // 1. Water Conservation (0–40 pts)
-  let waterPts = 30.0;
-  let waterReason = 'Standard maintenance timing under normal microclimate.';
-  let waterStatus = 'Routine';
+  const isRainImminent = rainProb >= 60.0 && rainMm >= 5.0;
 
-  if (action === 'delay' && rainImminent) {
+  // Dim 1: Water Conservation (Soil Profile Aware)
+  let waterPts = 28.0;
+  let waterReason = `Routine maintenance irrigation applied within acceptable soil moisture (${moisture.toFixed(1)}%) for configured ${soilProfile.name}.`;
+  let waterStatus = 'Routine Use';
+
+  if (action === 'delay' && isRainImminent) {
     waterPts = 40.0;
-    waterReason = `Imminent rain (≥60% chance, ${rainfall.toFixed(1)} mm) utilized; postponed to capture precipitation.`;
+    waterReason = `Forecasted rainfall (≥60% probability, ${rainMm.toFixed(1)} mm) utilized; irrigation postponed to capture natural precipitation and conserve groundwater.`;
     waterStatus = 'Optimal Timing';
-  } else if (action === 'irrigate_now' && rainImminent) {
+  } else if (action === 'irrigate_now' && isRainImminent) {
     waterPts = 10.0;
-    waterReason = `Irrigated despite imminent rain (${rainProb}% chance, ${rainfall.toFixed(1)} mm); runoff risk.`;
+    waterReason = `Irrigation triggered despite imminent rainfall (${rainProb.toFixed(0)}% chance, ${rainMm.toFixed(1)} mm); high risk of surface runoff and avoidable pumping.`;
     waterStatus = 'Runoff Risk';
-  } else if (moisture < 25.0) {
+  } else if (moisture < soilProfile.optimal_min) {
     if (action === 'irrigate_now') {
       waterPts = 36.0;
-      waterReason = `Timely irrigation relieving root-zone moisture deficit (${moisture.toFixed(1)}%).`;
+      waterReason = `Timely irrigation applied to relieve root-zone deficit (${moisture.toFixed(1)}% < ${soilProfile.optimal_min.toFixed(0)}%) for configured ${soilProfile.name}; protects crop from wilting.`;
       waterStatus = 'Targeted Relief';
     } else {
-      waterPts = 22.0;
-      waterReason = `Delayed despite dry root-zone (${moisture.toFixed(1)}%); potential drought stress.`;
+      waterPts = moisture < soilProfile.wilting_point ? 20.0 : 24.0;
+      waterReason = `Irrigation delayed despite root-zone deficit (${moisture.toFixed(1)}% < ${soilProfile.optimal_min.toFixed(0)}%) for configured ${soilProfile.name}; risks moisture stress if deferred further.`;
       waterStatus = 'Under-Irrigated';
     }
-  } else if (moisture > 40.0) {
+  } else if (moisture > soilProfile.optimal_max) {
     if (action === 'delay') {
       waterPts = 38.0;
-      waterReason = `Delayed for already saturated soil (${moisture.toFixed(1)}%); prevents waterlogging.`;
+      waterReason = `Irrigation delayed for moist soil (${moisture.toFixed(1)}% > ${soilProfile.optimal_max.toFixed(0)}%) in configured ${soilProfile.name}; avoids waterlogging and unnecessary water expenditure.`;
       waterStatus = 'Saturation Avoided';
     } else {
       waterPts = 14.0;
-      waterReason = `Irrigated into already saturated soil (${moisture.toFixed(1)}%); unnecessary pumping.`;
+      waterReason = `Irrigation applied to already saturated soil (${moisture.toFixed(1)}% > ${soilProfile.optimal_max.toFixed(0)}%) in configured ${soilProfile.name}; unnecessary application.`;
       waterStatus = 'Over-Irrigation';
     }
+  } else if (action === 'delay') {
+    waterPts = 32.0;
+    waterReason = `Standard conservation: root-zone moisture (${moisture.toFixed(1)}%) is within healthy field capacity (${soilProfile.optimal_min.toFixed(0)}%–${soilProfile.optimal_max.toFixed(0)}%) for configured ${soilProfile.name}; routine deferral.`;
+    waterStatus = 'Preserved';
   }
 
-  // 2. Weather Alignment (0–30 pts)
-  const rainBonus = rainProb >= 60 ? 10.0 : rainProb >= 30 ? 6.0 : 3.0;
-  const tempPts = temp >= 18 && temp <= 34 ? 14.0 : temp >= 10 && temp < 18 ? 8.0 : temp > 35 ? 4.0 : 2.0;
-  const humPts = humidity <= 75 ? 6.0 : humidity <= 85 ? 3.0 : 0.0;
-  const weatherPts = Math.min(30.0, rainBonus + tempPts + humPts);
+  // Dim 2: Weather Alignment (Crop Aware)
+  const rainPts = rainProb >= 60.0 ? 10.0 : rainProb >= 30.0 ? 6.0 : 3.0;
+  let tempPts = 8.0;
+  let tempNote = `moderate temperature (${temp.toFixed(1)}°C)`;
+  if (temp >= cropWeatherProfile.temp_optimal[0] && temp <= cropWeatherProfile.temp_optimal[1]) {
+    tempPts = 14.0;
+    tempNote = `optimal temperature (${temp.toFixed(1)}°C within ${cropWeatherProfile.temp_optimal[0]}–${cropWeatherProfile.temp_optimal[1]}°C window)`;
+  } else if (temp > cropWeatherProfile.temp_stress) {
+    tempPts = 4.0;
+    tempNote = `heat stress (${temp.toFixed(1)}°C > ${cropWeatherProfile.temp_stress}°C threshold)`;
+  } else if (temp < cropWeatherProfile.temp_chill) {
+    tempPts = 2.0;
+    tempNote = `chilling stress (${temp.toFixed(1)}°C < ${cropWeatherProfile.temp_chill}°C threshold)`;
+  }
+
+  let humPts = 3.0;
+  let humNote = `moderate humidity (${humidity.toFixed(0)}%)`;
+  if (humidity >= cropWeatherProfile.rh_optimal[0] && humidity <= cropWeatherProfile.rh_optimal[1]) {
+    humPts = 6.0;
+    humNote = `favorable relative humidity (${humidity.toFixed(0)}%)`;
+  } else if (humidity > cropWeatherProfile.rh_fungal_risk) {
+    humPts = 0.0;
+    humNote = `very high humidity (${humidity.toFixed(0)}% > ${cropWeatherProfile.rh_fungal_risk}%) elevating foliar disease risk`;
+  }
+
+  const weatherPts = Math.min(30.0, rainPts + tempPts + humPts);
   const weatherStatus = weatherPts >= 22.0 ? 'Favorable' : weatherPts >= 14.0 ? 'Moderate' : 'Stressful';
-  const weatherReason = `Microclimate factors: temp ${temp.toFixed(1)}°C (+${tempPts} pts), humidity ${humidity.toFixed(0)}% (+${humPts} pts), rain probability ${rainProb.toFixed(0)}% (+${rainBonus} pts).`;
+  const weatherReason = `Microclimate alignment for ${cropWeatherProfile.name}: ${tempNote} (+${tempPts.toFixed(0)} pts), ${humNote} (+${humPts.toFixed(0)} pts), and rain chance ${rainProb.toFixed(0)}% (+${rainPts.toFixed(0)} pts).`;
 
-  // 3. Soil Moisture Balance (0–15 pts)
+  // Dim 3: Soil Moisture Balance (Soil Profile Aware)
   let soilPts = 15.0;
+  let soilReason = `IoT probe shows root-zone moisture (${moisture.toFixed(1)}%) within optimal field capacity (${soilProfile.optimal_min.toFixed(0)}%–${soilProfile.optimal_max.toFixed(0)}%) for configured ${soilProfile.name}.`;
   let soilStatus = 'Optimal';
-  let soilReason = `Root-zone moisture (${moisture.toFixed(1)}%) in healthy 25%–40% field capacity range.`;
 
-  if (moisture >= 25.0 && moisture <= 40.0) {
+  if (moisture >= soilProfile.optimal_min && moisture <= soilProfile.optimal_max) {
     soilPts = 15.0;
-  } else if (moisture >= 20.0 && moisture < 25.0) {
-    soilPts = 10.0;
+    soilReason = `IoT probe shows root-zone moisture (${moisture.toFixed(1)}%) within optimal field capacity (${soilProfile.optimal_min.toFixed(0)}%–${soilProfile.optimal_max.toFixed(0)}%) for configured ${soilProfile.name}.`;
+    soilStatus = 'Optimal';
+  } else if (moisture >= soilProfile.mild_deficit && moisture < soilProfile.optimal_min) {
+    soilPts = 11.0;
+    soilReason = `IoT probe indicates mild moisture deficit (${moisture.toFixed(1)}%) below ${soilProfile.optimal_min.toFixed(0)}% field capacity for configured ${soilProfile.name}.`;
     soilStatus = 'Mild Deficit';
-    soilReason = `Mild root-zone deficit (${moisture.toFixed(1)}%); approaching wilting threshold.`;
-  } else if (moisture < 20.0) {
+  } else if (moisture >= soilProfile.wilting_point && moisture < soilProfile.mild_deficit) {
+    soilPts = 8.0;
+    soilReason = `IoT probe indicates moderate deficit (${moisture.toFixed(1)}%); approaching ${soilProfile.wilting_point.toFixed(0)}% wilting threshold for configured ${soilProfile.name}.`;
+    soilStatus = 'Moderate Deficit';
+  } else if (moisture < soilProfile.wilting_point) {
     soilPts = 4.0;
+    soilReason = `IoT probe detects acute moisture deficit (${moisture.toFixed(1)}% < ${soilProfile.wilting_point.toFixed(0)}% wilting point) for configured ${soilProfile.name}; root stress imminent.`;
     soilStatus = 'Severe Deficit';
-    soilReason = `Acute moisture deficit (${moisture.toFixed(1)}% < 20%); wilting stress hazard.`;
-  } else if (moisture > 40.0 && moisture <= 45.0) {
+  } else if (moisture > soilProfile.optimal_max && moisture <= soilProfile.saturation) {
     soilPts = 9.0;
+    soilReason = `IoT probe reports elevated moisture (${moisture.toFixed(1)}% > ${soilProfile.optimal_max.toFixed(0)}% field capacity) for configured ${soilProfile.name}; root aeration constrained.`;
     soilStatus = 'Elevated';
-    soilReason = `Elevated root-zone moisture (${moisture.toFixed(1)}%); aeration slightly constrained.`;
   } else {
     soilPts = 3.0;
+    soilReason = `IoT probe reports saturation (${moisture.toFixed(1)}% > ${soilProfile.saturation.toFixed(0)}%) for configured ${soilProfile.name}; high risk of root hypoxia and rot.`;
     soilStatus = 'Waterlogged';
-    soilReason = `Waterlogged root-zone (${moisture.toFixed(1)}% > 45%); root asphyxiation risk.`;
   }
 
-  // 4. Crop Rotation Compatibility (0–15 pts)
-  const tCrop = req.crop.toLowerCase();
-  const pCrop = (req.previous_crop || '').toLowerCase();
-  let rotationPts = 10.0;
-  let rotationStatus = 'Baseline Single-Crop';
-  let rotationReason = `Standalone planting without preceding rotation history (+10 pts baseline).`;
+  // Dim 4: Crop Rotation
+  const tCrop = req.crop.toLowerCase().trim();
+  const pCrop = (req.previous_crop || '').toLowerCase().trim();
+  let rotPts = 10.0;
+  let rotReason = `Target crop '${req.crop}' evaluated as standalone seasonal planting without preceding rotation history (+10 pts baseline).`;
+  let rotStatus = 'Baseline Single-Crop';
 
   if (pCrop) {
     if (tCrop === pCrop) {
-      rotationPts = 4.0;
-      rotationStatus = 'Monoculture Risk';
-      rotationReason = `Continuous monoculture of '${req.crop}'; pest build-up and nutrient drain risk.`;
+      rotPts = 4.0;
+      rotReason = `Continuous monoculture of '${tCrop}' following '${pCrop}'; increases soil-borne pathogen persistence and nutrient depletion.`;
+      rotStatus = 'Monoculture Risk';
     } else {
       const isTLegume = LEGUMES.some((l) => tCrop.includes(l));
       const isPLegume = LEGUMES.some((l) => pCrop.includes(l));
@@ -246,59 +428,74 @@ export function calculateClientSustainabilityScore(
       const isPCash = CASH_CROPS.some((c) => pCrop.includes(c));
 
       if ((isTLegume && (isPCereal || isPCash)) || ((isTCereal || isTCash) && isPLegume)) {
-        rotationPts = 15.0;
-        rotationStatus = 'Optimal Rotation';
-        rotationReason = `Synergistic restorative rotation ('${pCrop}' → '${tCrop}'); restores nitrogen and disrupts pests.`;
+        rotPts = 15.0;
+        rotReason = `Synergistic restorative rotation ('${pCrop}' → '${tCrop}'); breaks pest cycles, replenishes soil nitrogen, and optimizes nutrient uptake.`;
+        rotStatus = 'Optimal Rotation';
       } else if (isTLegume || isPLegume) {
-        rotationPts = 13.0;
-        rotationStatus = 'Favorable Rotation';
-        rotationReason = `Beneficial rotation incorporating legume biology ('${pCrop}' → '${tCrop}').`;
+        rotPts = 13.0;
+        rotReason = `Beneficial rotation incorporating legume biology ('${pCrop}' → '${tCrop}'); supports soil microbial health.`;
+        rotStatus = 'Favorable Rotation';
       } else {
-        rotationPts = 11.0;
-        rotationStatus = 'Diverse Rotation';
-        rotationReason = `Diverse crop sequence ('${pCrop}' → '${tCrop}'); breaks monoculture cycles.`;
+        rotPts = 11.0;
+        rotReason = `Standard diverse crop sequence ('${pCrop}' → '${tCrop}'); interrupts host-specific disease cycles compared to monoculture.`;
+        rotStatus = 'Diverse Rotation';
       }
     }
   }
 
-  const rawTotal = waterPts + weatherPts + soilPts + rotationPts;
+  const rawTotal = waterPts + weatherPts + soilPts + rotPts;
   const totalScore = Math.max(0, Math.min(100, Math.round(rawTotal)));
   const scoreLabel = getScoreLabel(totalScore);
 
-  // Water volume impact
-  const nominalLiters = telemetry.irrigation_flow_rate_lpm * telemetry.irrigation_duration_minutes;
-  const scaledLiters = Math.round(nominalLiters * (area / 0.1));
+  // Water Volume Impact
+  const flow = req.telemetry?.irrigation_flow_rate_lpm ?? 30.0;
+  const duration = req.telemetry?.irrigation_duration_minutes ?? 60.0;
+  const scaledLiters = Math.round(flow * duration * (farmArea / 0.1));
 
-  let impactType: 'saved' | 'unnecessary_use' | 'neutral' = 'neutral';
-  let impactLabel = `${scaledLiters.toLocaleString()} Litres Routine Cycle`;
-  let formulaBasis = `Irrigation cycle for ${area.toFixed(2)} ha based on ${telemetry.irrigation_flow_rate_lpm} L/min flow.`;
+  let waterImpactLitres = scaledLiters;
+  let impactType: 'avoided' | 'saved' | 'unnecessary_use' | 'neutral' = 'neutral';
+  let impactLabel = `${scaledLiters.toLocaleString()} L Productively Delivered`;
+  let formulaBasis = `Measured water delivery (${flow.toFixed(0)} L/min over ${duration} min) satisfying crop requirement on ${farmArea.toFixed(2)} ha.`;
 
-  if (action === 'delay' && (rainImminent || moisture > 40.0)) {
-    impactType = 'saved';
-    impactLabel = `Estimated ${scaledLiters.toLocaleString()} Litres Conserved`;
-    formulaBasis = `${telemetry.irrigation_flow_rate_lpm} L/min × ${telemetry.irrigation_duration_minutes} min × (${area.toFixed(2)} ha / 0.1 ha) delayed due to rainfall/saturation.`;
-  } else if (action === 'irrigate_now' && (rainImminent || moisture > 40.0)) {
+  if (action === 'delay') {
+    if (isRainImminent || moisture > soilProfile.optimal_max) {
+      impactType = 'avoided';
+      impactLabel = `Potential Irrigation Water Avoided: ${scaledLiters.toLocaleString()} L`;
+      formulaBasis = `Avoided 1 planned irrigation cycle (${flow.toFixed(0)} L/min × ${duration} min for ${farmArea.toFixed(2)} ha) because rain or root-zone moisture was sufficient. Represents simulated cycle volume avoided, not agronomic excess demand.`;
+    } else {
+      impactType = 'neutral';
+      impactLabel = `Estimated ${scaledLiters.toLocaleString()} L Irrigation Deferred`;
+      formulaBasis = `Irrigation deferred under standard operational schedule for ${farmArea.toFixed(2)} ha.`;
+    }
+  } else if (isRainImminent || moisture > soilProfile.optimal_max) {
     impactType = 'unnecessary_use';
-    impactLabel = `Estimated ${scaledLiters.toLocaleString()} Litres Redundant Application`;
-    formulaBasis = `Avoidable application during rainfall or saturation across ${area.toFixed(2)} ha.`;
+    impactLabel = `Estimated ${scaledLiters.toLocaleString()} L Redundant Application`;
+    formulaBasis = `Application during imminent rain or soil saturation leads to avoidable pumping across ${farmArea.toFixed(2)} ha.`;
   }
 
-  let recommendation = 'Maintain routine monitoring. Conditions are well-balanced.';
-  if (rainImminent) {
-    recommendation = moisture > 40.0
-      ? 'Postpone irrigation for 24–48 hours. Rain is imminent and soil moisture is already high, avoiding hypoxia.'
-      : 'Postpone irrigation for 24 hours. Natural precipitation will replenish root-zone moisture.';
-  } else if (moisture < 25.0) {
-    recommendation = 'Irrigate during early morning or evening hours. Root-zone moisture has dropped below comfort threshold.';
-  } else if (moisture > 40.0) {
-    recommendation = 'Hold irrigation. Root-zone moisture is sufficient; additional watering risks leaching.';
+  // Recommendations
+  let rec = 'Maintain routine monitoring. Soil moisture, microclimate, and crop rotation indices are well-balanced.';
+  if (isRainImminent) {
+    rec = moisture > soilProfile.optimal_max
+      ? 'Postpone irrigation for 24–48 hours. Heavy rainfall is imminent and root-zone moisture is already elevated, avoiding root hypoxia.'
+      : 'Postpone irrigation for 24 hours. Natural precipitation will sufficiently replenish root-zone moisture without groundwater pumping.';
+  } else if (moisture < soilProfile.optimal_min) {
+    rec = 'Irrigate during early morning or evening hours. Root-zone moisture has dropped below the field capacity threshold and no significant precipitation is forecast.';
+  } else if (moisture > soilProfile.optimal_max) {
+    rec = 'Hold irrigation. Current root-zone moisture is sufficient; additional watering risks nutrient leaching.';
   }
+
+  const delayWaterPts = isRainImminent ? 40.0 : moisture > soilProfile.optimal_max ? 38.0 : moisture < soilProfile.optimal_min ? (moisture < soilProfile.wilting_point ? 20.0 : 24.0) : 32.0;
+  const irrigateWaterPts = isRainImminent ? 10.0 : moisture > soilProfile.optimal_max ? 14.0 : moisture < soilProfile.optimal_min ? 36.0 : 28.0;
+
+  const delayTotal = Math.max(0, Math.min(100, Math.round(delayWaterPts + weatherPts + soilPts + rotPts)));
+  const irrigateTotal = Math.max(0, Math.min(100, Math.round(irrigateWaterPts + weatherPts + soilPts + rotPts)));
 
   return {
     total_score: totalScore,
     score_label: scoreLabel,
-    summary: `Sustainability Score: ${totalScore}/100 (${scoreLabel}). Evaluates farm plot (${area} ha) growing '${req.crop}' with soil moisture ${moisture.toFixed(1)}%.`,
-    recommendation,
+    summary: `Sustainability index is ${totalScore}/100 (${scoreLabel}). Action evaluated: ${action === 'delay' ? 'Delay' : 'Irrigate Now'}.`,
+    recommendation: rec,
     breakdown: {
       water_conservation: {
         dimension: 'Water Conservation & Irrigation Timing',
@@ -325,16 +522,16 @@ export function calculateClientSustainabilityScore(
         status: soilStatus,
       },
       crop_rotation_compatibility: {
-        dimension: 'Crop Rotation & Agro-Ecological Health',
-        points: rotationPts,
+        dimension: 'Crop Rotation & Agro-Ecological Compatibility',
+        points: rotPts,
         max_points: 15.0,
-        percentage: Math.round((rotationPts / 15.0) * 100),
-        reason: rotationReason,
-        status: rotationStatus,
+        percentage: Math.round((rotPts / 15.0) * 100),
+        reason: rotReason,
+        status: rotStatus,
       },
     },
     water_impact: {
-      litres: scaledLiters,
+      litres: waterImpactLitres,
       impact_type: impactType,
       label: impactLabel,
       formula_basis: formulaBasis,
@@ -342,23 +539,21 @@ export function calculateClientSustainabilityScore(
     comparison: {
       delay: {
         action: 'delay',
-        score: totalScore,
-        score_label: scoreLabel,
+        score: delayTotal,
+        score_label: getScoreLabel(delayTotal),
         water_impact_litres: scaledLiters,
-        water_impact_type: impactType,
+        water_impact_type: isRainImminent || moisture > soilProfile.optimal_max ? 'avoided' : 'neutral',
       },
       irrigate_now: {
         action: 'irrigate_now',
-        score: totalScore,
-        score_label: scoreLabel,
+        score: irrigateTotal,
+        score_label: getScoreLabel(irrigateTotal),
         water_impact_litres: scaledLiters,
-        water_impact_type: impactType,
+        water_impact_type: isRainImminent || moisture > soilProfile.optimal_max ? 'unnecessary_use' : 'neutral',
       },
     },
-    telemetry_used: {
-      ...telemetry,
-      soil_moisture_percent: moisture,
-    },
-    simulated_telemetry_notice: 'Sensor telemetry is generated via the Simulated IoT Sensor Layer for prototype validation.',
+    telemetry_used: req.telemetry || DEFAULT_IOT_TELEMETRY,
+    simulated_telemetry_notice:
+      'Simulated IoT Telemetry Layer: Root-zone sensor values are deterministically simulated for SIH prototyping and reproducible scoring.',
   };
 }

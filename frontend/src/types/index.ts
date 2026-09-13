@@ -82,6 +82,7 @@ export interface WeatherResponse {
 // ==========================================
 
 export interface SensorTelemetry {
+  preset_id?: string;
   soil_moisture_percent: number;
   soil_temperature_celsius: number;
   irrigation_flow_rate_lpm: number;
@@ -135,7 +136,7 @@ export interface ScoreBreakdownItem {
 
 export interface WaterImpactEstimate {
   litres: number;
-  impact_type: 'saved' | 'unnecessary_use' | 'neutral';
+  impact_type: 'avoided' | 'saved' | 'unnecessary_use' | 'neutral';
   label: string;
   formula_basis: string;
 }

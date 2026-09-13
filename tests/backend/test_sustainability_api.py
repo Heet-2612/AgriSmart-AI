@@ -28,8 +28,8 @@ def test_scenario_a_optimal_conditions_high_score():
         "soil_type": "Black",
         "previous_crop": "cotton",
         "action": "delay",
-        "temperature_celsius": 26.0,
-        "humidity_percent": 65.0,
+        "temperature_celsius": 24.0,
+        "humidity_percent": 55.0,
         "rain_probability_percent": 75.0,
         "expected_rainfall_mm": 15.0,
         "soil_moisture_percent": 32.0,
@@ -42,9 +42,9 @@ def test_scenario_a_optimal_conditions_high_score():
     assert data["score_label"] == "Excellent"
     assert data["breakdown"]["water_conservation"]["points"] == 40.0
     assert data["breakdown"]["crop_rotation_compatibility"]["points"] == 15.0
-    assert data["water_impact"]["impact_type"] == "saved"
+    assert data["water_impact"]["impact_type"] in ("avoided", "saved")
     assert data["water_impact"]["litres"] > 0
-    assert "Conserved" in data["water_impact"]["label"]
+    assert "Avoided" in data["water_impact"]["label"]
 
 
 def test_scenario_b_poor_management_decreases_score():
@@ -80,8 +80,8 @@ def test_scenario_c_determinism_identical_inputs_produce_identical_scores():
         "soil_type": "Alluvial",
         "previous_crop": "rice",
         "action": "delay",
-        "temperature_celsius": 22.0,
-        "humidity_percent": 60.0,
+        "temperature_celsius": 20.0,
+        "humidity_percent": 55.0,
         "rain_probability_percent": 40.0,
         "expected_rainfall_mm": 2.0,
         "soil_moisture_percent": 28.0,
@@ -126,3 +126,53 @@ def test_what_if_comparison_logic():
     assert "delay" in comp
     assert "irrigate_now" in comp
     assert comp["delay"]["score"] > comp["irrigate_now"]["score"]
+
+
+def test_soil_profile_awareness():
+    """Verify that soil moisture interpretation differs between Sandy and Clay profiles."""
+    base = {
+        "crop": "maize",
+        "farm_area_hectares": 0.1,
+        "action": "delay",
+        "temperature_celsius": 25.0,
+        "humidity_percent": 60.0,
+        "rain_probability_percent": 10.0,
+        "expected_rainfall_mm": 0.0,
+        "soil_moisture_percent": 20.0,
+    }
+
+    # In sandy soil, 20% VWC is within optimal field capacity (14-24%)
+    res_sand = client.post("/api/sustainability-score", json={**base, "soil_type": "Sandy"})
+    assert res_sand.status_code == 200
+    data_sand = res_sand.json()
+    assert data_sand["breakdown"]["soil_moisture_balance"]["points"] == 15.0
+    assert "Sandy" in data_sand["breakdown"]["soil_moisture_balance"]["reason"]
+
+    # In clay soil, 20% VWC is near the wilting point / severe deficit
+    res_clay = client.post("/api/sustainability-score", json={**base, "soil_type": "Clay"})
+    assert res_clay.status_code == 200
+    data_clay = res_clay.json()
+    assert data_clay["breakdown"]["soil_moisture_balance"]["points"] <= 8.0
+    assert "Clay" in data_clay["breakdown"]["soil_moisture_balance"]["reason"]
+
+
+def test_dry_soil_dry_forecast_irrigate_now_positive_score():
+    """Dry soil + dry forecast + irrigation now produces a sensible positive water-management score."""
+    payload = {
+        "crop": "cotton",
+        "farm_area_hectares": 0.1,
+        "soil_type": "Loam",
+        "action": "irrigate_now",
+        "temperature_celsius": 28.0,
+        "humidity_percent": 50.0,
+        "rain_probability_percent": 10.0,
+        "expected_rainfall_mm": 0.0,
+        "soil_moisture_percent": 12.0,  # Below wilting point for loam
+    }
+    res = client.post("/api/sustainability-score", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    # Timely irrigation of deficit produces 36.0 water conservation points
+    assert data["breakdown"]["water_conservation"]["points"] == 36.0
+    assert "Targeted Relief" in data["breakdown"]["water_conservation"]["status"]

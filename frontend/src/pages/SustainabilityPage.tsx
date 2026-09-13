@@ -536,7 +536,7 @@ export function SustainabilityPage({
                         Volumetric Water Metric
                       </span>
                       <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-sm ${
-                        scoreResult.water_impact.impact_type === 'saved'
+                        scoreResult.water_impact.impact_type === 'avoided' || scoreResult.water_impact.impact_type === 'saved'
                           ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                           : scoreResult.water_impact.impact_type === 'unnecessary_use'
                           ? 'bg-rose-50 text-rose-800 border border-rose-200'
@@ -579,7 +579,7 @@ export function SustainabilityPage({
                         </span>
                       </div>
                       <span className="text-2xs font-semibold text-emerald-700 block">
-                        Impact: {scoreResult.comparison.delay.water_impact_litres.toLocaleString()} L ({scoreResult.comparison.delay.water_impact_type})
+                        Impact: {scoreResult.comparison.delay.water_impact_litres.toLocaleString()} L ({scoreResult.comparison.delay.water_impact_type === 'avoided' || scoreResult.comparison.delay.water_impact_type === 'saved' ? 'Avoided Cycle' : scoreResult.comparison.delay.water_impact_type})
                       </span>
                     </div>
 
@@ -593,7 +593,7 @@ export function SustainabilityPage({
                         </span>
                       </div>
                       <span className="text-2xs font-semibold text-rose-700 block">
-                        Impact: {scoreResult.comparison.irrigate_now.water_impact_litres.toLocaleString()} L ({scoreResult.comparison.irrigate_now.water_impact_type})
+                        Impact: {scoreResult.comparison.irrigate_now.water_impact_litres.toLocaleString()} L ({scoreResult.comparison.irrigate_now.water_impact_type === 'unnecessary_use' ? 'Redundant Application' : 'Delivered'})
                       </span>
                     </div>
                   </div>
