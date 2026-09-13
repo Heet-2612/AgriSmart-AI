@@ -78,10 +78,20 @@ class WeatherDaily(BaseModel):
     precipitation_probability: float
 
 
+class SeasonalClimate(BaseModel):
+    season: str
+    temperature_mean: float
+    humidity_mean: float
+    rainfall_normal: float
+    region: str
+    soil_type_default: Optional[str] = None
+
+
 class WeatherResponse(BaseModel):
     location: WeatherLocation
     current: WeatherCurrent
     daily: WeatherDaily
+    climate: Optional[SeasonalClimate] = None
     advisories: list[str] = []
     timestamp: Optional[datetime] = None
 

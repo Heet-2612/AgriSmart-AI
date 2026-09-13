@@ -16,6 +16,11 @@ from app.schemas import (
     WeatherCurrent,
     WeatherDaily,
     WeatherResponse,
+    SeasonalClimate,
+)
+from app.services.climate_service import (
+    get_seasonal_climate,
+    SeasonalClimateUnavailableError,
 )
 
 WMO_WEATHER_CODES: Dict[int, str] = {
@@ -242,6 +247,14 @@ class WeatherService:
             wind_speed=wind_speed,
         )
 
+        climate: Optional[SeasonalClimate] = None
+        lookup_state = state or loc_name
+        if lookup_state:
+            try:
+                climate = get_seasonal_climate(state=lookup_state, district=district)
+            except SeasonalClimateUnavailableError:
+                climate = None
+
         return WeatherResponse(
             location=WeatherLocation(
                 name=loc_name,
@@ -265,6 +278,7 @@ class WeatherService:
                 precipitation_sum=precipitation_sum,
                 precipitation_probability=precipitation_probability,
             ),
+            climate=climate,
             advisories=advisories,
             timestamp=datetime.now(timezone.utc),
         )

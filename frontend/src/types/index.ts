@@ -68,10 +68,20 @@ export interface WeatherDaily {
   precipitation_probability: number;
 }
 
+export interface SeasonalClimate {
+  season: string;
+  temperature_mean: number;
+  humidity_mean: number;
+  rainfall_normal: number;
+  region: string;
+  soil_type_default?: string;
+}
+
 export interface WeatherResponse {
   location: WeatherLocation;
   current: WeatherCurrent;
   daily: WeatherDaily;
+  climate?: SeasonalClimate;
   advisories: string[];
   timestamp?: string;
 }

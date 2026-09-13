@@ -730,10 +730,10 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the Fetch Live Weather button in the Location section', () => {
+  it('renders the Fetch Weather & Climate button in the Location section', () => {
     render(<CropRecommendationPage onBack={vi.fn()} />);
 
-    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather data for location/i });
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
     expect(fetchWeatherBtn).toBeInTheDocument();
     expect(fetchWeatherBtn).toBeEnabled();
   });
@@ -741,14 +741,14 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
   it('prompts user if clicking Fetch Weather without entering District or State', async () => {
     render(<CropRecommendationPage onBack={vi.fn()} />);
 
-    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather data for location/i });
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
     fireEvent.click(fetchWeatherBtn);
 
     expect(await screen.findByText(/please enter a district or state/i)).toBeInTheDocument();
     expect(client.getWeather).not.toHaveBeenCalled();
   });
 
-  it('fetches weather and auto-populates temperature, humidity, rainfall, and displays live advisory card', async () => {
+  it('fetches weather, auto-populates seasonal climate normals, and displays live advisory card', async () => {
     const mockWeatherData = {
       location: {
         name: 'Ahmedabad',
@@ -772,6 +772,14 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
         precipitation_sum: 12.0,
         precipitation_probability: 25.0,
       },
+      climate: {
+        season: 'Kharif',
+        region: 'West',
+        temperature_mean: 31.0,
+        humidity_mean: 72.0,
+        rainfall_normal: 546.0,
+        soil_type_default: 'alluvial',
+      },
       advisories: [
         'Rain is expected today. Postpone irrigation where possible.',
         'Weather conditions are generally suitable for routine farm activities.',
@@ -786,7 +794,7 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
     const districtInput = screen.getByLabelText(/district/i) as HTMLInputElement;
     fireEvent.change(districtInput, { target: { value: 'Ahmedabad' } });
 
-    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather data for location/i });
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
     fireEvent.click(fetchWeatherBtn);
 
     await waitFor(() => {
@@ -795,19 +803,21 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
 
     const weatherCard = await screen.findByRole('region', { name: /live weather intelligence/i });
     expect(weatherCard).toBeInTheDocument();
-    expect(within(weatherCard).getByText(/Weather Intelligence • Ahmedabad, India/i)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/Live Weather • Ahmedabad, India/i)).toBeInTheDocument();
     expect(within(weatherCard).getByText(/31.5°C/)).toBeInTheDocument();
     expect(within(weatherCard).getByText(/62%/)).toBeInTheDocument();
     expect(within(weatherCard).getByText(/12 mm/)).toBeInTheDocument();
     expect(within(weatherCard).getByText(/Rain is expected today/i)).toBeInTheDocument();
+    expect(within(weatherCard).getByText(/Seasonal Climate Normals Applied to Crop Model/i)).toBeInTheDocument();
 
     const tempInput = screen.getByLabelText(/temperature/i) as HTMLInputElement;
     const humInput = screen.getByLabelText(/humidity/i) as HTMLInputElement;
     const rainInput = screen.getByLabelText(/rainfall/i) as HTMLInputElement;
 
-    expect(tempInput.value).toBe('31.5');
-    expect(humInput.value).toBe('62');
-    expect(rainInput.value).toBe('12');
+    // Environmental fields receive verified seasonal climate normals
+    expect(tempInput.value).toBe('31');
+    expect(humInput.value).toBe('72');
+    expect(rainInput.value).toBe('546');
   });
 
   it('displays graceful error message when weather service fails without breaking form', async () => {
@@ -819,7 +829,7 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
 
     fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'RemoteVillage' } });
 
-    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather data for location/i });
+    const fetchWeatherBtn = screen.getByRole('button', { name: /auto-fetch weather and climate data for location/i });
     fireEvent.click(fetchWeatherBtn);
 
     expect(await screen.findByText(/weather service is temporarily unavailable/i)).toBeInTheDocument();
