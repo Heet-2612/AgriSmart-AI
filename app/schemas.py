@@ -53,11 +53,45 @@ class DiseaseMetadata(BaseModel):
     precautions: Optional[str] = None
 
 
+class WeatherLocation(BaseModel):
+    name: str
+    country: str = "Unknown"
+    latitude: float
+    longitude: float
+    state: Optional[str] = None
+    district: Optional[str] = None
+
+
+class WeatherCurrent(BaseModel):
+    temperature: float
+    humidity: float
+    wind_speed: float
+    weather_code: int
+    condition: str
+    precipitation: Optional[float] = 0.0
+
+
+class WeatherDaily(BaseModel):
+    temp_min: float
+    temp_max: float
+    precipitation_sum: float
+    precipitation_probability: float
+
+
+class WeatherResponse(BaseModel):
+    location: WeatherLocation
+    current: WeatherCurrent
+    daily: WeatherDaily
+    advisories: list[str] = []
+    timestamp: Optional[datetime] = None
+
+
 class WeatherContext(BaseModel):
     risk_level: Optional[str] = None
     rainfall_probability: Optional[float] = Field(None, ge=0.0, le=1.0)
     temperature: Optional[float] = None
     humidity: Optional[float] = None
+
 
 
 class ChatContext(BaseModel):

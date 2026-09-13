@@ -44,4 +44,21 @@ class Settings(BaseModel):
     GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
     GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-8b-8192"))
 
+    # Weather Intelligence Settings
+    OPEN_METEO_GEOCODING_URL: str = Field(
+        default_factory=lambda: os.getenv(
+            "OPEN_METEO_GEOCODING_URL", "https://geocoding-api.open-meteo.com/v1/search"
+        )
+    )
+    OPEN_METEO_FORECAST_URL: str = Field(
+        default_factory=lambda: os.getenv(
+            "OPEN_METEO_FORECAST_URL", "https://api.open-meteo.com/v1/forecast"
+        )
+    )
+    WEATHER_REQUEST_TIMEOUT_SECONDS: float = Field(
+        default_factory=lambda: float(os.getenv("WEATHER_REQUEST_TIMEOUT_SECONDS", "5.0"))
+    )
+
 settings = Settings()
+
+
