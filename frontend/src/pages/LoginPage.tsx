@@ -1,7 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Lock, Mail, Info, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { resendVerificationEmail } from '../api/client';
 
 export interface LoginPageProps {
   onBack: () => void;
@@ -15,8 +14,6 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,27 +30,11 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed. Please check your credentials.';
       setErrorMessage(msg);
-      setResendStatus('idle');
-      setResendMessage(null);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleResend = async () => {
-    if (!email) return;
-    setResendStatus('loading');
-    setResendMessage(null);
-    try {
-      const res = await resendVerificationEmail(email);
-      setResendStatus('success');
-      setResendMessage(res.message);
-    } catch (err: unknown) {
-      setResendStatus('error');
-      const msg = err instanceof Error ? err.message : 'Failed to resend verification email.';
-      setResendMessage(msg);
-    }
-  };
 
   return (
     <main className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">
@@ -146,28 +127,7 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
             <div
               role="alert"
               className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 leading-relaxed"
-            >
-              <p>{errorMessage}</p>
-              {errorMessage.includes('Email verification required') && (
-                <div className="mt-2 pt-2 border-t border-rose-200">
-                  <p className="mb-2">You need to verify your email address before logging in.</p>
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendStatus === 'loading'}
-                    className="w-full py-1.5 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                  >
-                    {resendStatus === 'loading' && <Loader2 size={12} className="animate-spin" />}
-                    <span>Resend Verification Email</span>
-                  </button>
-                  {resendStatus === 'success' && (
-                    <p className="mt-2 text-[11px] text-emerald-700 font-semibold">{resendMessage}</p>
-                  )}
-                  {resendStatus === 'error' && (
-                    <p className="mt-2 text-[11px] text-rose-700 font-semibold">{resendMessage}</p>
-                  )}
-                </div>
-              )}
+              {errorMessage}
             </div>
           )}
 

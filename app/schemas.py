@@ -3,9 +3,21 @@ from pydantic import BaseModel, Field, field_validator, ValidationInfo, EmailStr
 from datetime import datetime
 from uuid import UUID
 
+ALLOWED_EMAIL_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"}
+
 class UserRegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        domain = v.split('@')[-1].lower()
+        if domain not in ALLOWED_EMAIL_DOMAINS:
+            raise ValueError("Email provider not supported")
+        if "." not in domain:
+            raise ValueError("Invalid email domain format")
+        return v
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
@@ -21,11 +33,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-class ResendVerificationRequest(BaseModel):
-    email: EmailStr
 
-class VerificationResponse(BaseModel):
-    message: str
 
 class HealthResponse(BaseModel):
     status: str = "ok"

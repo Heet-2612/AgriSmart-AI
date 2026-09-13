@@ -50,18 +50,6 @@ class Settings(BaseModel):
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")))
 
-    # Email Settings
-    SMTP_HOST: Optional[str] = Field(default_factory=lambda: os.getenv("SMTP_HOST"))
-    SMTP_PORT: int = Field(default_factory=lambda: int(os.getenv("SMTP_PORT", "587")))
-    SMTP_USERNAME: Optional[str] = Field(default_factory=lambda: os.getenv("SMTP_USERNAME"))
-    SMTP_PASSWORD: Optional[str] = Field(default_factory=lambda: os.getenv("SMTP_PASSWORD"))
-    SMTP_FROM_EMAIL: str = Field(default_factory=lambda: os.getenv("SMTP_FROM_EMAIL", "noreply@agrismart.ai"))
-    SMTP_FROM_NAME: str = Field(default_factory=lambda: os.getenv("SMTP_FROM_NAME", "AgriSmart AI"))
-    EMAIL_VERIFICATION_BASE_URL: str = Field(
-        default_factory=lambda: os.getenv("EMAIL_VERIFICATION_BASE_URL", "http://localhost:5173/verify-email")
-    )
-    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = Field(
-        default_factory=lambda: int(os.getenv("EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES", "1440"))
-    )
+
 
 settings = Settings()
