@@ -45,7 +45,7 @@ class ChatContext(BaseModel):
     farmer_context: Optional[Dict] = None
     question: str = Field(..., min_length=1, max_length=500)
     session_id: UUID
-    language: Optional[str] = Field("en", min_length=2, max_length=5)
+    language: Optional[str] = Field("en")
 
     @field_validator("question")
     @classmethod
@@ -61,6 +61,13 @@ class ChatContext(BaseModel):
         for cls_name, prob in v.items():
             if not (0.0 <= prob <= 1.0):
                 raise ValueError(f"probability for {cls_name} must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("en", "hi", "gu"):
+            raise ValueError("unsupported language code")
         return v
 
 

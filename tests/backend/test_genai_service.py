@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from google.genai.errors import APIError as GeminiAPIError
 from groq import APIError as GroqAPIError, RateLimitError as GroqRateLimitError
 from app.schemas import ChatContext, DiseaseMetadata, WeatherContext, ChatAnswer
-from app.services.genai_service import generate_chat_answer, _build_grounding_context
+from app.services.genai_service import generate_chat_answer, _build_grounding_context, _build_system_prompt
 from app.core.errors import ChatProviderUnavailableError
 
 @pytest.fixture
@@ -233,3 +233,98 @@ def test_schema_whitespace_question():
             question="   \n   ", # Only whitespace
             session_id=uuid4()
         )
+
+# --- Multilingual Tests ---
+
+def test_language_en_prompt(valid_context):
+    valid_context.language = "en"
+    grounding = _build_grounding_context(valid_context)
+    prompt = _build_system_prompt(valid_context, grounding)
+    assert "language code: en" in prompt
+    assert "MUST be written entirely in the requested language" in prompt
+
+def test_language_hi_prompt(valid_context):
+    valid_context.language = "hi"
+    grounding = _build_grounding_context(valid_context)
+    prompt = _build_system_prompt(valid_context, grounding)
+    assert "language code: hi" in prompt
+    assert "MUST be written entirely in the requested language" in prompt
+
+def test_language_gu_prompt(valid_context):
+    valid_context.language = "gu"
+    grounding = _build_grounding_context(valid_context)
+    prompt = _build_system_prompt(valid_context, grounding)
+    assert "language code: gu" in prompt
+
+def test_language_default_prompt():
+    context = ChatContext(
+        predicted_class="Apple_scab",
+        confidence=0.95,
+        probabilities={"Apple_scab": 0.95, "Healthy": 0.05},
+        model_version="v1.0",
+        leaf_detected=True,
+        question="Help",
+        session_id=uuid4()
+    )
+    # language is implicitly "en"
+    grounding = _build_grounding_context(context)
+    prompt = _build_system_prompt(context, grounding)
+    assert "language code: en" in prompt
+
+def test_followup_language_behavior(valid_context):
+    valid_context.language = "hi"
+    valid_context.question = "First question in Hindi"
+    grounding1 = _build_grounding_context(valid_context)
+    prompt1 = _build_system_prompt(valid_context, grounding1)
+    
+    valid_context.language = "gu"
+    valid_context.question = "Second question in Gujarati"
+    grounding2 = _build_grounding_context(valid_context)
+    prompt2 = _build_system_prompt(valid_context, grounding2)
+    
+    assert "language code: hi" in prompt1
+    assert "language code: gu" in prompt2
+
+@patch("app.services.genai_service.get_gemini_client")
+@patch("app.services.genai_service.get_groq_client")
+def test_gemini_fallback_preserves_language(mock_get_groq, mock_get_gemini, valid_context):
+    valid_context.language = "gu"
+    
+    # Mock Gemini to fail (transient)
+    mock_gemini = MagicMock()
+    error = GeminiAPIError(503, {"error": "Service Unavailable"}, None)
+    mock_gemini.models.generate_content.side_effect = error
+    mock_get_gemini.return_value = mock_gemini
+    
+    # Mock Groq to succeed
+    mock_groq = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock(message=MagicMock(content="Gujarati Groq Response"))]
+    mock_groq.chat.completions.create.return_value = mock_response
+    mock_get_groq.return_value = mock_groq
+    
+    answer = generate_chat_answer(valid_context)
+    
+    # Groq must have been called with the Gujarati instruction
+    call_args = mock_groq.chat.completions.create.call_args
+    assert call_args is not None
+    kwargs = call_args[1]
+    system_prompt_used = kwargs["messages"][0]["content"]
+    assert "language code: gu" in system_prompt_used
+    assert answer.source == "groq"
+    assert answer.answer == "Gujarati Groq Response"
+
+def test_schema_unsupported_language():
+    with pytest.raises(ValidationError) as exc:
+        ChatContext(
+            predicted_class="Apple_scab",
+            confidence=0.95,
+            probabilities={"Apple_scab": 0.95},
+            model_version="v1.0",
+            leaf_detected=True,
+            question="Help",
+            session_id=uuid4(),
+            language="fr" # Unsupported
+        )
+    assert "unsupported language code" in str(exc.value).lower()
+
