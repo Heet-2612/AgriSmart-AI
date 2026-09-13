@@ -26,8 +26,8 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/agrismart_db
-      MODEL_CHECKPOINT_PATH: model/checkpoints/best_model.pt
-      MODEL_VERSION: v0.1.0-scaffold
+      MODEL_CHECKPOINT_PATH: model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt
+      MODEL_VERSION: E11-SigLIP-HYBRID10-PRODUCTION
       ENVIRONMENT: development
     ports:
       - "8000:8000"
