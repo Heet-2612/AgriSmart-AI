@@ -1,8 +1,25 @@
 import { useState } from 'react';
 import { Leaf, Menu, X } from 'lucide-react';
 
-export function Header() {
+interface HeaderProps {
+  activeView?: 'home' | 'crop-recommendation';
+  onNavigateHome?: () => void;
+}
+
+export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLinkClick = (hash?: string) => {
+    if (activeView !== 'home' && onNavigateHome) {
+      onNavigateHome();
+      if (hash) {
+        setTimeout(() => {
+          const el = document.querySelector(hash);
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
+    }
+  };
 
   return (
     <header
@@ -14,8 +31,14 @@ export function Header() {
 
           {/* Wordmark & Brand Logo */}
           <a
-            href="/"
+            href="#diagnose"
             aria-label="AgriSmart AI — home"
+            onClick={(e) => {
+              if (activeView !== 'home' && onNavigateHome) {
+                e.preventDefault();
+                onNavigateHome();
+              }
+            }}
             className="flex items-center gap-2.5 no-underline hover:no-underline focus-visible:rounded-lg"
           >
             <span
@@ -34,10 +57,16 @@ export function Header() {
           <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-2">
             <a
               href="#diagnose"
+              onClick={(e) => {
+                if (activeView !== 'home' && onNavigateHome) {
+                  e.preventDefault();
+                  onNavigateHome();
+                }
+              }}
               className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
               style={{
-                backgroundColor: '#ECFDF5',
-                color: '#059669',
+                backgroundColor: activeView === 'home' ? '#ECFDF5' : 'transparent',
+                color: activeView === 'home' ? '#059669' : '#475569',
                 textDecoration: 'none',
               }}
             >
@@ -45,6 +74,7 @@ export function Header() {
             </a>
             <a
               href="#how-it-works"
+              onClick={() => handleLinkClick('#how-it-works')}
               className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
               style={{ textDecoration: 'none' }}
             >
@@ -52,6 +82,7 @@ export function Header() {
             </a>
             <a
               href="#supported-crops"
+              onClick={() => handleLinkClick('#supported-crops')}
               className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
               style={{ textDecoration: 'none' }}
             >
@@ -59,6 +90,7 @@ export function Header() {
             </a>
             <a
               href="#model-info"
+              onClick={() => handleLinkClick('#model-info')}
               className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
               style={{ textDecoration: 'none' }}
             >
@@ -71,6 +103,12 @@ export function Header() {
             <a
               href="#diagnose"
               aria-label="Diagnose Leaf"
+              onClick={(e) => {
+                if (activeView !== 'home' && onNavigateHome) {
+                  e.preventDefault();
+                  onNavigateHome();
+                }
+              }}
               className="flex h-9 w-9 items-center justify-center rounded-full transition-all hover:opacity-90 hover:scale-105 shadow-xs"
               style={{ backgroundColor: '#059669', color: '#FFFFFF' }}
             >
@@ -101,28 +139,43 @@ export function Header() {
           >
             <a
               href="#diagnose"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                if (activeView !== 'home' && onNavigateHome) {
+                  e.preventDefault();
+                  onNavigateHome();
+                }
+              }}
               className="block rounded-lg px-3 py-2 text-base font-medium text-emerald-700 bg-emerald-50"
             >
               Home
             </a>
             <a
               href="#how-it-works"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLinkClick('#how-it-works');
+              }}
               className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
             >
               How It Works
             </a>
             <a
               href="#supported-crops"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLinkClick('#supported-crops');
+              }}
               className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
             >
               Supported Crops
             </a>
             <a
               href="#model-info"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLinkClick('#model-info');
+              }}
               className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
             >
               Model Info
