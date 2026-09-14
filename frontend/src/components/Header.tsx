@@ -1,23 +1,60 @@
 import { useState } from 'react';
 import { Leaf, Menu, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
-  activeView?: 'home' | 'crop-recommendation';
+  activeView?: 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
   onNavigateHome?: () => void;
+  onNavigateCropRecommendation?: () => void;
+  onNavigateSustainability?: () => void;
+  onNavigateLogin?: () => void;
+  onNavigateSignup?: () => void;
+  onOpenAuth?: () => void;
 }
 
-export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}) {
+export function Header({
+  activeView = 'home',
+  onNavigateHome,
+  onNavigateCropRecommendation,
+  onNavigateSustainability: _onNavigateSustainability,
+  onNavigateLogin,
+  onNavigateSignup,
+  onOpenAuth,
+}: HeaderProps = {}) {
+  const { status, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleLinkClick = (hash?: string) => {
+  const handleLinkClick = (e?: React.MouseEvent, hash?: string) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (activeView !== 'home' && onNavigateHome) {
       onNavigateHome();
       if (hash) {
         setTimeout(() => {
           const el = document.querySelector(hash);
           el?.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
+        }, 100);
       }
+    } else if (hash) {
+      const el = document.querySelector(hash);
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleLoginClick = () => {
+    if (onNavigateLogin) {
+      onNavigateLogin();
+    } else if (onOpenAuth) {
+      onOpenAuth();
+    }
+  };
+
+  const handleSignupClick = () => {
+    if (onNavigateSignup) {
+      onNavigateSignup();
+    } else if (onOpenAuth) {
+      onOpenAuth();
     }
   };
 
@@ -63,43 +100,86 @@ export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}
                   onNavigateHome();
                 }
               }}
-              className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: activeView === 'home' ? '#ECFDF5' : 'transparent',
-                color: activeView === 'home' ? '#059669' : '#475569',
-                textDecoration: 'none',
-              }}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors no-underline ${
+                activeView === 'home'
+                  ? 'bg-[#ECFDF5] text-[#059669]'
+                  : 'text-[#475569] hover:bg-[#ECFDF5] hover:text-[#059669]'
+              }`}
             >
               Home
             </a>
-            <a
-              href="#how-it-works"
-              onClick={() => handleLinkClick('#how-it-works')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
-              style={{ textDecoration: 'none' }}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigateCropRecommendation?.();
+              }}
+              aria-label="Farm Insight — Crop Recommendation"
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+                activeView === 'crop-recommendation' || activeView === 'sustainability'
+                  ? 'bg-[#ECFDF5] text-[#059669]'
+                  : 'text-[#475569] hover:bg-[#ECFDF5] hover:text-[#059669]'
+              }`}
             >
-              How It Works
-            </a>
+              Farm Insight
+            </button>
             <a
               href="#supported-crops"
-              onClick={() => handleLinkClick('#supported-crops')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
-              style={{ textDecoration: 'none' }}
+              onClick={(e) => handleLinkClick(e, '#supported-crops')}
+              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#ECFDF5] hover:text-[#059669] no-underline"
             >
               Supported Crops
             </a>
             <a
-              href="#model-info"
-              onClick={() => handleLinkClick('#model-info')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-50"
-              style={{ textDecoration: 'none' }}
+              href="#how-it-works"
+              onClick={(e) => handleLinkClick(e, '#how-it-works')}
+              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#ECFDF5] hover:text-[#059669] no-underline"
             >
-              Model Info
+              How It Works
             </a>
           </nav>
 
-          {/* Right Action / Leaf Badge */}
-          <div className="hidden md:flex items-center">
+          {/* Top-Right Side: Sign Up (primary), Login (secondary) */}
+          <div className="hidden md:flex items-center gap-3">
+
+            {status === 'authenticated' && user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-700">
+                  {user.name || user.email || 'Account'}
+                </span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer transition-colors"
+                  aria-label="Sign Out"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {/* Action: Login */}
+                <button
+                  type="button"
+                  onClick={handleLoginClick}
+                  className="rounded-full border border-emerald-600 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-700 transition-colors cursor-pointer"
+                  aria-label="Login"
+                >
+                  Login
+                </button>
+
+                {/* Primary / Default Action: Sign Up */}
+                <button
+                  type="button"
+                  onClick={handleSignupClick}
+                  className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                  aria-label="Sign Up"
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
+
             <a
               href="#diagnose"
               aria-label="Diagnose Leaf"
@@ -146,40 +226,92 @@ export function Header({ activeView = 'home', onNavigateHome }: HeaderProps = {}
                   onNavigateHome();
                 }
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-emerald-700 bg-emerald-50"
+              className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                activeView === 'home' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
+              }`}
             >
               Home
             </a>
-            <a
-              href="#how-it-works"
+            <button
+              type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
-                handleLinkClick('#how-it-works');
+                onNavigateCropRecommendation?.();
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
+              aria-label="Farm Insight — Crop Recommendation"
+              className={`block w-full text-left rounded-lg px-3 py-2 text-base font-medium cursor-pointer transition-colors ${
+                activeView === 'crop-recommendation' || activeView === 'sustainability' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
+              }`}
             >
-              How It Works
-            </a>
+              Farm Insight
+            </button>
             <a
               href="#supported-crops"
-              onClick={() => {
+              onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleLinkClick('#supported-crops');
+                handleLinkClick(e, '#supported-crops');
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
+              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669] transition-colors"
             >
               Supported Crops
             </a>
             <a
-              href="#model-info"
-              onClick={() => {
+              href="#how-it-works"
+              onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleLinkClick('#model-info');
+                handleLinkClick(e, '#how-it-works');
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50"
+              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669] transition-colors"
             >
-              Model Info
+              How It Works
             </a>
+
+            {/* Mobile Auth Entry Point */}
+            <div className="pt-2 border-t border-slate-100 mt-2">
+              {status === 'authenticated' && user ? (
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-sm font-medium text-slate-700">
+                    {user.name || user.email || 'Account'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+                    aria-label="Sign Out"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 px-3 py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleSignupClick();
+                    }}
+                    className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
+                    aria-label="Sign Up"
+                  >
+                    Sign Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLoginClick();
+                    }}
+                    className="flex w-full items-center justify-center rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                    aria-label="Login"
+                  >
+                    Login
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
         )}
       </div>

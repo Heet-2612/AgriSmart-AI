@@ -147,6 +147,59 @@ describe('DiagnosisResult Component', () => {
     fireEvent.click(btn);
     expect(onReset).toHaveBeenCalledTimes(1);
   });
+
+  it('renders fallback model engaged warning when fallback_used is true', () => {
+    const fallbackResult: PredictionResponse = {
+      ...baseResult,
+      fallback_used: true,
+    };
+
+    render(
+      <DiagnosisResult
+        result={fallbackResult}
+        onReset={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/fallback diagnostic model engaged/i)).toBeInTheDocument();
+    expect(screen.getByText(/computed using the secondary fallback model/i)).toBeInTheDocument();
+  });
+
+  it('renders leaf not detected warning when leaf_detected is false', () => {
+    const noLeafResult: PredictionResponse = {
+      ...baseResult,
+      leaf_detected: false,
+    };
+
+    render(
+      <DiagnosisResult
+        result={noLeafResult}
+        onReset={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/no leaf detected in image/i)).toBeInTheDocument();
+    expect(screen.getByText(/could not verify a clear plant leaf region/i)).toBeInTheDocument();
+  });
+
+  it('renders pipeline and roi_count metadata when provided', () => {
+    const richResult: PredictionResponse = {
+      ...baseResult,
+      pipeline: 'E11-SigLIP',
+      roi_count: 3,
+    };
+
+    render(
+      <DiagnosisResult
+        result={richResult}
+        onReset={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('E11-SigLIP')).toBeInTheDocument();
+    expect(screen.getByText('Regions Analyzed')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
 });
 
 describe('ModelUnavailable Component', () => {

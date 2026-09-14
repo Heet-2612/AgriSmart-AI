@@ -45,6 +45,16 @@ class ChatProviderUnavailableError(AppError):
     def __init__(self, message: str = "Assistant temporarily unavailable. Please try again."):
         super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+class SessionNotFoundError(AppError):
+    """Raised when a chat session cannot be found."""
+    def __init__(self, message: str = "Chat session not found."):
+        super().__init__(message, status_code=status.HTTP_404_NOT_FOUND)
+
+class SessionAccessError(AppError):
+    """Raised when a user attempts to access another user's chat session."""
+    def __init__(self, message: str = "You do not have permission to access this session."):
+        super().__init__(message, status_code=status.HTTP_403_FORBIDDEN)
+
 
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     """Standardized handler for domain exceptions."""

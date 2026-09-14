@@ -60,33 +60,35 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     ).toBeInTheDocument();
   });
 
-  it('renders exactly three bonus feature cards in the section', () => {
+  it('renders exactly two feature cards in the section', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
     const bonusSection = screen.getByRole('region', { name: /bonus features/i });
     const cards = within(bonusSection).getAllByRole('region');
-    expect(cards).toHaveLength(3);
+    expect(cards).toHaveLength(2);
   });
 
-  it('displays the three required titles: Crop Recommendation, Soil Health & Nutrients, and Yield & Harvest Forecast', () => {
+  it('displays the two required titles: Crop Recommendation and Sustainability Score', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
     expect(
       screen.getByRole('heading', { name: 'Crop Recommendation', level: 3 })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Soil Health & Nutrients', level: 3 })
+      screen.getByRole('heading', { name: 'Sustainability Score', level: 3 })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Yield & Harvest Forecast', level: 3 })
-    ).toBeInTheDocument();
+      screen.queryByRole('heading', { name: 'Yield & Harvest Forecast', level: 3 })
+    ).not.toBeInTheDocument();
   });
 
-  it('renders exactly two "Coming Soon" badges for the non-functional features', () => {
+  it('renders the "Ready to Use" badge for both feature cards', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
-    const comingSoonLabels = screen.getAllByText(/coming soon/i);
-    expect(comingSoonLabels).toHaveLength(2);
+    const readyLabels = screen.getAllByText(/ready to use/i);
+    expect(readyLabels).toHaveLength(2);
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/feature in development/i)).not.toBeInTheDocument();
   });
 
   it('renders Crop Recommendation CTA button which is active and interactive', () => {
@@ -101,12 +103,21 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
-  it('ensures Cards 2 and 3 do not contain clickable action buttons', () => {
-    render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
+  it('renders interactive Sustainability Score CTA button and triggers navigation', () => {
+    const handleSelectMock = vi.fn();
+    render(
+      <BonusFeaturesSection
+        onSelectCropRecommendation={vi.fn()}
+        onSelectSustainabilityScore={handleSelectMock}
+      />
+    );
 
-    const allButtons = screen.getAllByRole('button');
-    expect(allButtons).toHaveLength(1);
-    expect(allButtons[0]).toHaveTextContent(/try crop recommendation/i);
+    const ctaButton = screen.getByRole('button', { name: /open sustainability score/i });
+    expect(ctaButton).toBeInTheDocument();
+    expect(ctaButton).toBeEnabled();
+
+    fireEvent.click(ctaButton);
+    expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
   it('navigates from Home to Crop Recommendation form when clicking Try Crop Recommendation', () => {
@@ -138,6 +149,17 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
 
     expect(
       screen.getByRole('heading', { name: /plant disease diagnosis/i, level: 1 })
+    ).toBeInTheDocument();
+  });
+
+  it('navigates from Home to Sustainability Score form when clicking Open Sustainability Score', () => {
+    render(<App />);
+
+    const sustainBtn = screen.getByRole('button', { name: /open sustainability score/i });
+    fireEvent.click(sustainBtn);
+
+    expect(
+      screen.getByRole('heading', { name: /farm sustainability & water score/i, level: 1 })
     ).toBeInTheDocument();
   });
 
@@ -720,5 +742,171 @@ describe('Crop Recommendation API Integration — Step 4', () => {
     expect(within(resultSection).getByText(/ranked crop alternatives/i)).toBeInTheDocument();
     expect(within(resultSection).getByText(/other suitable crops/i)).toBeInTheDocument();
     expect(within(resultSection).getByText(realApiResponse.explanation!)).toBeInTheDocument();
+  });
+});
+
+describe('Crop Recommendation — Incremental Completion Flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.scrollTo = vi.fn();
+  });
+
+  it('navigates directly to crop recommendation from the header navigation as a guest', () => {
+    render(<App />);
+
+    // Click Crop Recommendation button in desktop header nav
+    const cropNavButtons = screen.getAllByRole('button', { name: /crop recommendation/i });
+    expect(cropNavButtons.length).toBeGreaterThan(0);
+    fireEvent.click(cropNavButtons[0]);
+
+    // Verifies the page is rendered without any authentication modal or redirect
+    expect(
+      screen.getByRole('heading', { name: /^crop recommendation$/i, level: 1 })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('validates required fields and shows user-friendly validation messages', () => {
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    // Click submit on empty form
+    fireEvent.click(screen.getByRole('button', { name: /recommend crop/i }));
+
+    expect(screen.getByText(/incomplete form submission/i)).toBeInTheDocument();
+    expect(screen.getByText(/please correct the highlighted fields before submitting/i)).toBeInTheDocument();
+    expect(screen.getByText(/state is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/district is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/temperature is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/humidity is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/rainfall is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/soil type is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/previous crop is required/i)).toBeInTheDocument();
+  });
+
+  it('validates out-of-range numeric fields', () => {
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/temperature/i), { target: { value: '99' } });
+    fireEvent.change(screen.getByLabelText(/humidity/i), { target: { value: '150' } });
+    fireEvent.change(screen.getByLabelText(/rainfall/i), { target: { value: '6000' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /recommend crop/i }));
+
+    expect(screen.getByText(/temperature must be between -10°c and 60°c/i)).toBeInTheDocument();
+    expect(screen.getByText(/humidity must be between 0% and 100%/i)).toBeInTheDocument();
+    expect(screen.getByText(/rainfall must be between 0 mm and 5000 mm/i)).toBeInTheDocument();
+  });
+
+  it('submits valid request payload and displays loading state before success', async () => {
+    let resolvePromise: (val: any) => void = () => {};
+    const pendingPromise = new Promise((resolve) => {
+      resolvePromise = resolve;
+    });
+    vi.mocked(client.recommendCrop).mockReturnValueOnce(pendingPromise as any);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/state/i), { target: { value: 'Gujarat' } });
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'Ahmedabad' } });
+    fireEvent.change(screen.getByLabelText(/temperature/i), { target: { value: '28.5' } });
+    fireEvent.change(screen.getByLabelText(/humidity/i), { target: { value: '65' } });
+    fireEvent.change(screen.getByLabelText(/rainfall/i), { target: { value: '750' } });
+    fireEvent.change(screen.getByLabelText(/soil type/i), { target: { value: 'alluvial' } });
+    fireEvent.change(screen.getByLabelText(/previous crop/i), { target: { value: 'cotton' } });
+
+    const submitBtn = screen.getByRole('button', { name: /recommend crop/i });
+    fireEvent.click(submitBtn);
+
+    // Verify loading state
+    expect(screen.getByText(/analyzing conditions\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/state/i)).toBeDisabled();
+
+    // Verify exact 7-field backend payload
+    expect(client.recommendCrop).toHaveBeenCalledWith({
+      state: 'Gujarat',
+      district: 'Ahmedabad',
+      temperature: 28.5,
+      humidity: 65,
+      rainfall: 750,
+      soil_type: 'alluvial',
+      previous_crop: 'cotton',
+    });
+
+    // Resolve API call
+    resolvePromise(mockCropResponse);
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /crop recommendation result/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /wheat/i, level: 2 })).toBeInTheDocument();
+    });
+  });
+
+  it('displays API error state with a working Retry action', async () => {
+    vi.mocked(client.recommendCrop)
+      .mockRejectedValueOnce(new ApiError(503, 'Crop recommendation model is not available'))
+      .mockResolvedValueOnce(mockCropResponse);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/state/i), { target: { value: 'Gujarat' } });
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'Ahmedabad' } });
+    fireEvent.change(screen.getByLabelText(/temperature/i), { target: { value: '28' } });
+    fireEvent.change(screen.getByLabelText(/humidity/i), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText(/rainfall/i), { target: { value: '500' } });
+    fireEvent.change(screen.getByLabelText(/soil type/i), { target: { value: 'alluvial' } });
+    fireEvent.change(screen.getByLabelText(/previous crop/i), { target: { value: 'rice' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /recommend crop/i }));
+
+    // API error banner appears
+    const errorAlert = await screen.findByRole('alert');
+    expect(errorAlert).toBeInTheDocument();
+    expect(screen.getByText(/crop recommendation service is temporarily offline \(503\)/i)).toBeInTheDocument();
+
+    // Click Retry Request button
+    const retryBtn = screen.getByRole('button', { name: /retry recommendation request/i });
+    expect(retryBtn).toBeInTheDocument();
+    fireEvent.click(retryBtn);
+
+    // Second call succeeds
+    const resultSection = await screen.findByRole('region', { name: /crop recommendation result/i });
+    expect(resultSection).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /wheat/i, level: 2 })).toBeInTheDocument();
+  });
+
+  it('allows resetting form and starting over from result view', async () => {
+    vi.mocked(client.recommendCrop).mockResolvedValueOnce(mockCropResponse);
+
+    render(<CropRecommendationPage onBack={vi.fn()} />);
+
+    const stateInput = screen.getByLabelText(/state/i) as HTMLInputElement;
+    fireEvent.change(stateInput, { target: { value: 'Punjab' } });
+    expect(stateInput.value).toBe('Punjab');
+
+    // Test form-level reset button
+    const resetFormBtn = screen.getByRole('button', { name: /reset form/i });
+    fireEvent.click(resetFormBtn);
+    expect(stateInput.value).toBe('');
+
+    // Fill form and submit
+    fireEvent.change(screen.getByLabelText(/state/i), { target: { value: 'Punjab' } });
+    fireEvent.change(screen.getByLabelText(/district/i), { target: { value: 'Ludhiana' } });
+    fireEvent.change(screen.getByLabelText(/temperature/i), { target: { value: '25' } });
+    fireEvent.change(screen.getByLabelText(/humidity/i), { target: { value: '55' } });
+    fireEvent.change(screen.getByLabelText(/rainfall/i), { target: { value: '450' } });
+    fireEvent.change(screen.getByLabelText(/soil type/i), { target: { value: 'alluvial' } });
+    fireEvent.change(screen.getByLabelText(/previous crop/i), { target: { value: 'maize' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /recommend crop/i }));
+
+    await screen.findByRole('region', { name: /crop recommendation result/i });
+
+    // Test "Start Over" button from result section
+    const startOverBtn = screen.getByRole('button', { name: /start over/i });
+    fireEvent.click(startOverBtn);
+
+    // Result is cleared and form is reset
+    expect(screen.queryByRole('region', { name: /crop recommendation result/i })).not.toBeInTheDocument();
+    expect((screen.getByLabelText(/state/i) as HTMLInputElement).value).toBe('');
   });
 });

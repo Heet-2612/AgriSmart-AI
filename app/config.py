@@ -44,4 +44,12 @@ class Settings(BaseModel):
     GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
     GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-8b-8192"))
 
+    # JWT Settings
+    JWT_SECRET_KEY: str = Field(
+        default_factory=lambda: os.environ["JWT_SECRET_KEY"]
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")))
+
+
+
 settings = Settings()
