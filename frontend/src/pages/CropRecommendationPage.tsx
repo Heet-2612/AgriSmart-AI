@@ -1,6 +1,7 @@
 import { useState, useRef, FormEvent, ChangeEvent } from 'react';
 import {
   Sprout,
+  Leaf,
   ArrowLeft,
   MapPin,
   Thermometer,
@@ -60,6 +61,7 @@ export interface CropRecommendationPageProps {
   onSubmit?: (data: CropRecommendationFormData) => void;
   initialPreviousCrop?: string;
   onOpenSustainability?: (ctx: { crop: string; previousCrop?: string; soilType?: string; location?: string }) => void;
+  onNavigateSustainability?: () => void;
 }
 
 const INITIAL_FORM_DATA: CropRecommendationFormData = {
@@ -90,7 +92,13 @@ export function getConfidencePercent(conf: unknown): number {
   return Math.min(100, Math.max(0, percent));
 }
 
-export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, onOpenSustainability }: CropRecommendationPageProps) {
+export function CropRecommendationPage({
+  onBack,
+  onSubmit,
+  initialPreviousCrop,
+  onOpenSustainability,
+  onNavigateSustainability,
+}: CropRecommendationPageProps) {
   const [formData, setFormData] = useState<CropRecommendationFormData>(() => ({
     ...INITIAL_FORM_DATA,
     previous_crop: initialPreviousCrop || '',
@@ -400,6 +408,33 @@ export function CropRecommendationPage({ onBack, onSubmit, initialPreviousCrop, 
             <ArrowLeft size={15} aria-hidden="true" />
             <span>Back to Plant Diagnosis</span>
           </Button>
+        </div>
+
+        {/* Farm Insights Sub-tabs Switcher */}
+        <div
+          className="inline-flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs mb-8"
+          role="tablist"
+          aria-label="Farm Insights Navigation"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={true}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 shadow-2xs"
+          >
+            <Sprout size={14} className="text-emerald-600" />
+            <span>Crop Recommendation</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={false}
+            onClick={onNavigateSustainability}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors cursor-pointer"
+          >
+            <Leaf size={14} className="text-emerald-600" />
+            <span>Sustainability Score</span>
+          </button>
         </div>
 
         {/* Main Form Workbench Card */}

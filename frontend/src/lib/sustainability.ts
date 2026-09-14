@@ -303,7 +303,7 @@ export function calculateClientSustainabilityScore(
   const action = req.action ?? 'delay';
   const farmArea = req.farm_area_hectares ?? 0.1;
 
-  const soilProfile = resolveSoilProfile(req.soil_type, req.telemetry?.preset_id);
+  const soilProfile = resolveSoilProfile(req.soil_type ?? undefined, req.telemetry?.preset_id);
   const cropWeatherProfile = resolveCropWeatherProfile(req.crop);
 
   const isRainImminent = rainProb >= 60.0 && rainMm >= 5.0;

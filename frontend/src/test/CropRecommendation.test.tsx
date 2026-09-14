@@ -63,33 +63,35 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     ).toBeInTheDocument();
   });
 
-  it('renders exactly three bonus feature cards in the section', () => {
+  it('renders exactly two feature cards in the section', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
     const bonusSection = screen.getByRole('region', { name: /bonus features/i });
     const cards = within(bonusSection).getAllByRole('region');
-    expect(cards).toHaveLength(3);
+    expect(cards).toHaveLength(2);
   });
 
-  it('displays the three required titles: Crop Recommendation, Soil Health & Nutrients, and Yield & Harvest Forecast', () => {
+  it('displays the two required titles: Crop Recommendation and Sustainability Score', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
     expect(
       screen.getByRole('heading', { name: 'Crop Recommendation', level: 3 })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Soil Health & Nutrients', level: 3 })
+      screen.getByRole('heading', { name: 'Sustainability Score', level: 3 })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Yield & Harvest Forecast', level: 3 })
-    ).toBeInTheDocument();
+      screen.queryByRole('heading', { name: 'Yield & Harvest Forecast', level: 3 })
+    ).not.toBeInTheDocument();
   });
 
-  it('renders exactly two "Coming Soon" badges for the non-functional features', () => {
+  it('renders the "Ready to Use" badge for both feature cards', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
-    const comingSoonLabels = screen.getAllByText(/coming soon/i);
-    expect(comingSoonLabels).toHaveLength(2);
+    const readyLabels = screen.getAllByText(/ready to use/i);
+    expect(readyLabels).toHaveLength(2);
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/feature in development/i)).not.toBeInTheDocument();
   });
 
   it('renders Crop Recommendation CTA button which is active and interactive', () => {
@@ -104,12 +106,21 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
-  it('ensures Cards 2 and 3 do not contain clickable action buttons', () => {
-    render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
+  it('renders interactive Sustainability Score CTA button and triggers navigation', () => {
+    const handleSelectMock = vi.fn();
+    render(
+      <BonusFeaturesSection
+        onSelectCropRecommendation={vi.fn()}
+        onSelectSustainabilityScore={handleSelectMock}
+      />
+    );
 
-    const allButtons = screen.getAllByRole('button');
-    expect(allButtons).toHaveLength(1);
-    expect(allButtons[0]).toHaveTextContent(/try crop recommendation/i);
+    const ctaButton = screen.getByRole('button', { name: /open sustainability score/i });
+    expect(ctaButton).toBeInTheDocument();
+    expect(ctaButton).toBeEnabled();
+
+    fireEvent.click(ctaButton);
+    expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
   it('navigates from Home to Crop Recommendation form when clicking Try Crop Recommendation', () => {
@@ -778,9 +789,13 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
         season: 'Kharif',
         region: 'West',
         temperature_mean: 31.0,
+        temperature_min: 24.0,
+        temperature_max: 36.0,
         humidity_mean: 72.0,
         rainfall_normal: 546.0,
         soil_type_default: 'alluvial',
+        climate_zone: 'Tropical',
+        source: 'IMD',
       },
       advisories: [
         'Rain is expected today. Postpone irrigation where possible.',
@@ -847,9 +862,13 @@ describe('Crop Recommendation — Weather Intelligence Integration', () => {
       season: 'Rabi',
       region: 'West',
       temperature_mean: 22.0,
+      temperature_min: 15.0,
+      temperature_max: 29.0,
       humidity_mean: 45.0,
       rainfall_normal: 23.4,
       soil_type_default: 'alluvial',
+      climate_zone: 'Subtropical',
+      source: 'IMD',
     };
 
     vi.mocked(client.getSeasonalClimate).mockResolvedValueOnce(mockRabiClimate);

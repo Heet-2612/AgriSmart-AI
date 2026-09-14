@@ -9,9 +9,12 @@ export interface PredictionResponse {
   probabilities?: Record<string, number>;
   display_name?: string;
   precaution?: string;
+  pipeline?: string;
   is_conclusive?: boolean;
   status?: string;
   leaf_detected?: boolean;
+  roi_count?: number;
+  fallback_used?: boolean;
   crop_class?: string;
   crop_confidence?: number;
   rejection_reason?: string;
@@ -19,9 +22,51 @@ export interface PredictionResponse {
 
 export interface ApiError {
   detail: string;
-  status?: string;
+  status?: string | number;
   is_conclusive?: boolean;
   rejection_reason?: string;
+}
+
+export type ChatLanguage = 'en' | 'hi' | 'gu';
+
+export interface ChatRequest {
+  predicted_class: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+  model_version: string;
+  leaf_detected?: boolean;
+  fallback_used?: boolean;
+  question: string;
+  session_id: string;
+  language?: ChatLanguage;
+}
+
+export interface ChatAnswer {
+  answer: string;
+  session_id: string;
+  grounded: boolean;
+  source: string;
+  timestamp: string;
+}
+
+export interface ChatMessage {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface ChatSessionResponse {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessageResponse {
+  id: number;
+  role: 'user' | 'assistant' | string;
+  content: string;
+  created_at: string;
 }
 
 export interface RankedCropRecommendation {
@@ -74,113 +119,42 @@ export interface WeatherCurrent {
   wind_speed: number;
   weather_code: number;
   condition: string;
+  is_day?: boolean;
+  precipitation?: number;
 }
 
 export interface WeatherDaily {
-  temp_min: number;
-  temp_max: number;
+  temperature_max?: number;
+  temperature_min?: number;
+  temp_max?: number;
+  temp_min?: number;
   precipitation_sum: number;
-  precipitation_probability: number;
+  precipitation_probability_max?: number;
+  precipitation_probability?: number;
+  wind_speed_max?: number;
 }
 
 export interface SeasonalClimate {
+  region: string;
   season: string;
   temperature_mean: number;
+  temperature_min: number;
+  temperature_max: number;
   humidity_mean: number;
   rainfall_normal: number;
-  region: string;
-  soil_type_default?: string | null;
+  climate_zone: string;
+  soil_type_default?: string;
+  source: string;
 }
 
 export interface WeatherResponse {
   location: WeatherLocation;
   current: WeatherCurrent;
   daily: WeatherDaily;
-  climate?: SeasonalClimate | null;
+  climate?: SeasonalClimate;
   advisories: string[];
-  timestamp?: string | null;
+  timestamp?: string;
 }
 
-// ==========================================
-// Simulated IoT Telemetry Types
-// ==========================================
-
-export interface SensorTelemetry {
-  preset_id?: string;
-  soil_moisture_percent: number;
-  soil_temperature_celsius: number;
-  irrigation_flow_rate_lpm: number;
-  irrigation_duration_minutes: number;
-  water_tank_level_percent?: number;
-  soil_ph?: number;
-  soil_ec_ds_m?: number;
-  is_simulated: boolean;
-}
-
-export interface IoTPreset {
-  preset_id: string;
-  name: string;
-  description: string;
-  telemetry: SensorTelemetry;
-}
-
-export interface IoTPresetsResponse {
-  presets: IoTPreset[];
-}
-
-// ==========================================
-// Sustainability Score Types
-// ==========================================
-
-export type IrrigationAction = 'delay' | 'irrigate_now';
-export type ScoreLabel = 'Excellent' | 'Good' | 'Needs Improvement';
-
-export interface SustainabilityScoreRequest {
-  crop: string;
-  farm_area_hectares?: number;
-  soil_type?: string;
-  previous_crop?: string;
-  action?: IrrigationAction;
-  temperature_celsius: number;
-  humidity_percent: number;
-  rain_probability_percent?: number;
-  expected_rainfall_mm?: number;
-  telemetry?: SensorTelemetry;
-  soil_moisture_percent?: number;
-}
-
-export interface ScoreBreakdownItem {
-  dimension: string;
-  points: number;
-  max_points: number;
-  percentage: number;
-  reason: string;
-  status: string;
-}
-
-export interface WaterImpactEstimate {
-  litres: number;
-  impact_type: 'avoided' | 'saved' | 'unnecessary_use' | 'neutral';
-  label: string;
-  formula_basis: string;
-}
-
-export interface ActionComparisonOption {
-  action: IrrigationAction;
-  score: number;
-  score_label: ScoreLabel;
-  water_impact_litres: number;
-  water_impact_type: string;
-}
-
-export interface SustainabilityScoreResponse {
-  total_score: number;
-  score_label: ScoreLabel;
-  summary: string;
-  recommendation: string;
-  breakdown: Record<string, ScoreBreakdownItem>;
-  water_impact: WaterImpactEstimate;
-  comparison: Record<IrrigationAction, ActionComparisonOption>;
-  telemetry_used: SensorTelemetry;
-  simulated_telemetry_notice: string;
-}
+export * from './auth';
+export * from './sustainability';

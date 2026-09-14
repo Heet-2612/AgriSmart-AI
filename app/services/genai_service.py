@@ -32,7 +32,7 @@ def _build_grounding_context(context: ChatContext) -> str:
     parts = []
     parts.append(f"Predicted Disease: {context.predicted_class}")
     parts.append(f"Confidence: {context.confidence:.2f}")
-    
+
     # Ambiguity check
     sorted_probs = sorted(context.probabilities.items(), key=lambda x: x[1], reverse=True)
     if len(sorted_probs) > 1:
@@ -40,10 +40,10 @@ def _build_grounding_context(context: ChatContext) -> str:
         second_prob = sorted_probs[1][1]
         if top_prob - second_prob < 0.15: # 0.15 threshold for ambiguity
             parts.append(f"Note: The prediction is somewhat ambiguous. {sorted_probs[1][0]} is also a possibility.")
-            
+
     if context.fallback_used:
         parts.append("Note: The primary diagnostic system encountered an issue, so a fallback diagnostic was used. Please be slightly more cautious in your tone.")
-            
+
     if context.disease_metadata:
         md = context.disease_metadata
         parts.append(f"Disease Name: {md.display_name}")
@@ -51,7 +51,7 @@ def _build_grounding_context(context: ChatContext) -> str:
         parts.append(f"Treatment: {md.treatment}")
         if md.precautions:
             parts.append(f"Precautions: {md.precautions}")
-            
+
     if context.weather_context:
         w = context.weather_context
         w_parts = []
@@ -61,10 +61,10 @@ def _build_grounding_context(context: ChatContext) -> str:
         if w.rainfall_probability is not None: w_parts.append(f"Rainfall Prob: {w.rainfall_probability:.2f}")
         if w_parts:
             parts.append("Weather Context: " + ", ".join(w_parts))
-            
+
     if context.location_context:
         parts.append(f"Location Context: {json.dumps(context.location_context)}")
-        
+
     if context.farmer_context:
         parts.append(f"Farmer Context: {json.dumps(context.farmer_context)}")
 
@@ -107,21 +107,35 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             source="system",
             timestamp=datetime.now(timezone.utc)
         )
-        
+
     grounding_text = _build_grounding_context(context)
     system_prompt = _build_system_prompt(context, grounding_text)
     user_prompt = context.question
-    
+
     gemini = get_gemini_client()
     groq = get_groq_client()
-    
+
     gemini_failed = False
     # Try Gemini first
     if gemini:
         try:
+            contents = []
+            if context.history:
+                for msg in context.history:
+                    role = "model" if msg.role == "assistant" else "user"
+                    if contents and contents[-1].role == role:
+                        contents[-1].parts.append(genai_types.Part.from_text(text=f"\n\n{msg.content}"))
+                    else:
+                        contents.append(genai_types.Content(role=role, parts=[genai_types.Part.from_text(text=msg.content)]))
+
+            if contents and contents[-1].role == "user":
+                contents[-1].parts.append(genai_types.Part.from_text(text=f"\n\n{user_prompt}"))
+            else:
+                contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_prompt)]))
+
             response = gemini.models.generate_content(
                 model=settings.GEMINI_MODEL,
-                contents=user_prompt,
+                contents=contents,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt
                 )
@@ -147,20 +161,23 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
                 raise # Bubble up fatal/auth errors
     else:
         gemini_failed = True
-            
+
     # Fallback to Groq
     if groq and gemini_failed:
         try:
+            messages = [{"role": "system", "content": system_prompt}]
+            if context.history:
+                for msg in context.history:
+                    messages.append({"role": msg.role, "content": msg.content})
+            messages.append({"role": "user", "content": user_prompt})
+
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
+                messages=messages,
                 max_tokens=1024,
                 temperature=0.3
             )
-            
+
             if response.choices and response.choices[0].message.content and response.choices[0].message.content.strip():
                 return ChatAnswer(
                     answer=response.choices[0].message.content.strip(),
@@ -172,7 +189,7 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             else:
                 logger.error("Groq returned an empty response.")
                 raise ChatProviderUnavailableError("Empty response from providers")
-                
+
         except (GroqInternalServerError, GroqAPIConnectionError, GroqRateLimitError) as e:
             logger.error(f"Groq transient generation failed: {e}")
             raise ChatProviderUnavailableError() from e
@@ -180,6 +197,6 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             # E.g. authentication errors bubble up
             logger.error(f"Groq generation fatal error: {e}")
             raise
-            
+
     # Both failed or unavailable
     raise ChatProviderUnavailableError()

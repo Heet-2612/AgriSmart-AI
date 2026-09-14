@@ -1,9 +1,15 @@
-import { SustainabilityPage } from './pages/SustainabilityPage';
 import { useState, Component, ReactNode, ErrorInfo } from 'react';
 import { Leaf } from 'lucide-react';
 import { Header } from './components/Header';
 import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
+import { SustainabilityScorePage } from './pages/SustainabilityScorePage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { AuthProvider } from './context/AuthContext';
+import { AuthModal } from './components/auth/AuthModal';
+
+export type AppView = 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -99,29 +105,42 @@ function Footer() {
   );
 }
 
-export default function App() {
-  const [activeView, setActiveView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
-  const [sustainabilityContext, setSustainabilityContext] = useState<{ crop?: string; previousCrop?: string; soilType?: string; location?: string }>({});
+function AppShell() {
+  const [activeView, setActiveView] = useState<AppView>('home');
+  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
   const [suggestedCrop, setSuggestedCrop] = useState<string>('');
+  const [sustainabilityContext, setSustainabilityContext] = useState<{ crop?: string; previousCrop?: string; soilType?: string; location?: string }>({});
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const handleNavigateHome = () => {
-    setActiveView('home');
+  const navigateTo = (view: AppView) => {
+    if (activeView === 'home' || activeView === 'crop-recommendation' || activeView === 'sustainability') {
+      setPreviousView(activeView);
+    }
+    setActiveView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateHome = () => navigateTo('home');
+
+  const handleOpenCropRecommendation = (crop?: string) => {
+    if (crop) {
+      setSuggestedCrop(crop);
+    }
+    navigateTo('crop-recommendation');
   };
 
   const handleOpenSustainability = (ctx?: { crop?: string; previousCrop?: string; soilType?: string; location?: string }) => {
     if (ctx) {
       setSustainabilityContext(ctx);
     }
-    setActiveView('sustainability');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo('sustainability');
   };
 
-  const handleOpenCropRecommendation = (crop?: string) => {
-    if (crop) {
-      setSuggestedCrop(crop);
-    }
-    setActiveView('crop-recommendation');
+  const handleNavigateLogin = () => navigateTo('login');
+  const handleNavigateSignup = () => navigateTo('signup');
+
+  const handleReturnToPrevious = () => {
+    setActiveView(previousView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -130,29 +149,64 @@ export default function App() {
       <Header
         activeView={activeView}
         onNavigateHome={handleNavigateHome}
+        onNavigateCropRecommendation={() => handleOpenCropRecommendation()}
         onNavigateSustainability={() => handleOpenSustainability()}
+        onNavigateLogin={handleNavigateLogin}
+        onNavigateSignup={handleNavigateSignup}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
       <ErrorBoundary fallbackView={handleNavigateHome}>
-        {activeView === 'home' ? (
-          <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
-        ) : activeView === 'crop-recommendation' ? (
+        {activeView === 'home' && (
+          <DiagnosePage
+            onOpenCropRecommendation={handleOpenCropRecommendation}
+            onOpenSustainabilityScore={() => handleOpenSustainability()}
+          />
+        )}
+        {activeView === 'crop-recommendation' && (
           <CropRecommendationPage
             onBack={handleNavigateHome}
             initialPreviousCrop={suggestedCrop}
             onOpenSustainability={handleOpenSustainability}
+            onNavigateSustainability={() => handleOpenSustainability()}
           />
-        ) : (
-          <SustainabilityPage
+        )}
+        {activeView === 'sustainability' && (
+          <SustainabilityScorePage
             onBack={handleNavigateHome}
-            initialCrop={sustainabilityContext.crop || 'Chickpea'}
-            initialPreviousCrop={sustainabilityContext.previousCrop || 'Cotton'}
-            initialSoilType={sustainabilityContext.soilType || 'Black'}
-            initialLocation={sustainabilityContext.location || 'Nagpur'}
+            onNavigateCropRecommendation={() => handleOpenCropRecommendation()}
+            initialCrop={sustainabilityContext.crop}
+            initialPreviousCrop={sustainabilityContext.previousCrop}
+            initialSoilType={sustainabilityContext.soilType}
+          />
+        )}
+        {activeView === 'login' && (
+          <LoginPage
+            onBack={handleReturnToPrevious}
+            onNavigateSignup={handleNavigateSignup}
+            onSuccess={handleReturnToPrevious}
+          />
+        )}
+        {activeView === 'signup' && (
+          <SignupPage
+            onBack={handleReturnToPrevious}
+            onNavigateLogin={handleNavigateLogin}
+            onSuccess={handleReturnToPrevious}
           />
         )}
       </ErrorBoundary>
       <Footer />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   );
 }
 
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
