@@ -33,7 +33,7 @@ from experiments.e14_leaf_presence_gate.leaf_presence_gate import LeafPresenceGa
 EXP_ROOT = REPO_ROOT / "experiments/e14_leaf_presence_gate"
 AUDIT_MANIFEST = REPO_ROOT / "experiments/e00_validity_audit/test_manifest.csv"
 YOLO_RESULTS_CSV = REPO_ROOT / "experiments/e00_validity_audit/yolo_results.csv"
-E12_CKPT_PATH = REPO_ROOT / "experiments/e12_siglip_validity/validity_classifier_baseline.pt"
+E12_CKPT_PATH = REPO_ROOT / "model/checkpoints/validity_classifier_baseline.pt"
 PROD_CKPT_PATH = REPO_ROOT / "model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt"
 
 EXPECTED_PROD_SHA = "a51d814fc434c514743180a9df596d6a5aa6d250e7b3e496dd5927fdea6c64df"

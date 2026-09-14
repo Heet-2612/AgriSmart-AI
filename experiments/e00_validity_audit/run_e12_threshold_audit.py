@@ -25,10 +25,10 @@ from torchvision import transforms
 import timm
 
 # Path configuration
-REPO_ROOT = Path(r"C:\VScode\AgriSmart-AI-integration")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 AUDIT_DIR = REPO_ROOT / "experiments/e00_validity_audit"
 MANIFEST_PATH = AUDIT_DIR / "test_manifest.csv"
-E12_CKPT_PATH = REPO_ROOT / "experiments/e12_siglip_validity/validity_classifier_baseline.pt"
+E12_CKPT_PATH = REPO_ROOT / "model/checkpoints/validity_classifier_baseline.pt"
 PROD_CKPT_PATH = REPO_ROOT / "model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt"
 
 EXPECTED_E12_SHA = "bdab814caf713cadd8ba11453f1b1e6b7f5d2383fcd66de829ef9d2600045322"

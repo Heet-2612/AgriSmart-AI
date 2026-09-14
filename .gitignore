@@ -90,7 +90,6 @@ mlruns/
 *.h5
 !model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt
 !model/checkpoints/validity_classifier_baseline.pt
-!experiments/e12_siglip_validity/validity_classifier_baseline.pt
 
 # Allow frontend lib directory
 !frontend/src/lib/

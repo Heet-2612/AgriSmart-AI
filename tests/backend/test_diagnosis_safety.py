@@ -31,24 +31,20 @@ def _resolve_test_image_root() -> Path:
 
 TEST_IMAGE_ROOT = _resolve_test_image_root()
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "samples"
+
 SUPPORTED_LEAF_SAMPLES = {
-    "Potato Early Blight": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
-    "Potato Late Blight": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Potato___Late_blight" / "00695906-210d-4a9d-822e-986a17384115___RS_LB 4026.JPG",
-    "Potato Healthy": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Potato___healthy" / "00fc2ee5-729f-4757-8aeb-65c3355874f2___RS_HL 1864.JPG",
-    "Tomato YLCV": TEST_IMAGE_ROOT / "plantdoc" / "external_test" / "Tomato___Tomato_Yellow_Leaf_Curl_Virus" / "test_11-40580_5.jpg",
-    "Tomato Healthy": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Tomato___healthy" / "04141939-3a8c-47b2-a582-e8371ccc120f___RS_HL 0275.JPG",
-    "Corn Healthy": TEST_IMAGE_ROOT / "plantvillage" / "train" / "Corn_(maize)___healthy" / "00031d74-076e-4aef-b040-e068cd3576eb___R.S_HL 8315 copy 2.jpg",
-    "Apple Scab": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Apple___Apple_scab" / "0208f4eb-45a4-4399-904e-989ac2c6257c___FREC_Scab 3037.JPG",
-    "Apple Healthy": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Apple___healthy" / "0580ddaa-0221-4adc-8b64-8ce1842f5f07___RS_HL 6242.JPG",
+    "Potato Early Blight": FIXTURES_DIR / "potato_leaf.jpg",
+    "Tomato Healthy": FIXTURES_DIR / "tomato_leaf.jpg",
+    "Corn Healthy": FIXTURES_DIR / "corn_leaf.jpg",
+    "Apple Scab": FIXTURES_DIR / "apple_leaf.jpg",
 }
 
 UNSUPPORTED_LEAF_SAMPLES = {
-    "soybean": TEST_IMAGE_ROOT / "plantdoc" / "external_test" / "Soybean___healthy" / "test_07feb_ma_sbr3.JPG.jpg",
-    "grape": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Grape___Black_rot" / "017268b1-c25c-4299-a566-1b7ba3f1591e___FAM_B.Rot 3014.JPG",
-    "pepper": TEST_IMAGE_ROOT / "plantvillage_benchmark" / "val" / "Pepper,_bell___Bacterial_spot" / "006adb74-934f-448f-a14f-62181742127b___JR_B.Spot 3395.JPG",
-    "peach": TEST_IMAGE_ROOT / "plantdoc" / "external_test" / "Peach___healthy" / "test_00pe.jpg",
-    "strawberry": TEST_IMAGE_ROOT / "plantdoc" / "external_test" / "Strawberry___healthy" / "test_strawberry-leaf--stock-photo-1431216.jpg",
+    "soybean": FIXTURES_DIR / "soybean_leaf.jpg",
 }
+
 
 
 @pytest.fixture(autouse=True)
@@ -228,22 +224,12 @@ def test_9_low_confidence_supported_example_becomes_inconclusive():
                 "model_version": "E11-SigLIP-HYBRID10-PRODUCTION",
             }
 
-    # Synthetic textured leaf image passing Stage 1
-    arr = np.zeros((224, 224, 3), dtype=np.uint8)
-    for i in range(224):
-        for j in range(224):
-            arr[i, j, 0] = int(35 + 20 * np.sin(i / 10.0))
-            arr[i, j, 1] = int(120 + 40 * np.sin((i + j) / 15.0))
-            arr[i, j, 2] = int(30 + 15 * np.cos(j / 10.0))
-    img = Image.fromarray(arr)
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    buf.seek(0)
-
+    leaf_path = FIXTURES_DIR / "potato_leaf.jpg"
     app.dependency_overrides[get_predictor] = lambda: MockUncertainPredictor()
     try:
         client = TestClient(app)
-        res = client.post("/api/predictions", files={"image": ("leaf.jpg", buf, "image/jpeg")})
+        with open(leaf_path, "rb") as f:
+            res = client.post("/api/predictions", files={"image": ("leaf.jpg", f, "image/jpeg")})
         assert res.status_code == 200
         data = res.json()
         assert data["is_conclusive"] is False
@@ -316,19 +302,12 @@ def test_12_handoff_contract_consistency():
                 "model_version": "E11-SigLIP-HYBRID10-PRODUCTION",
             }
 
-    arr = np.zeros((224, 224, 3), dtype=np.uint8)
-    for i in range(224):
-        for j in range(224):
-            arr[i, j, 0] = int(40 + 20 * np.sin(i / 10.0))
-            arr[i, j, 1] = int(120 + 30 * np.sin(j / 10.0))
-            arr[i, j, 2] = int(35 + 10 * np.cos((i + j) / 10.0))
-    buf_leaf = io.BytesIO()
-    Image.fromarray(arr).save(buf_leaf, format="JPEG")
-    buf_leaf.seek(0)
+    leaf_fixture = FIXTURES_DIR / "potato_leaf.jpg"
 
     app.dependency_overrides[get_predictor] = lambda: InconclusivePredictor()
     try:
-        res_inconclusive = client.post("/api/predictions", files={"image": ("leaf.jpg", buf_leaf, "image/jpeg")})
+        with open(leaf_fixture, "rb") as f:
+            res_inconclusive = client.post("/api/predictions", files={"image": ("leaf.jpg", f, "image/jpeg")})
         assert res_inconclusive.status_code == 200
         data_inc = res_inconclusive.json()
         assert data_inc["is_conclusive"] is False

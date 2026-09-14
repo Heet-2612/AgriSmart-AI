@@ -5,7 +5,7 @@ Generate E12_LOCKED_AUDIT_THRESHOLD_REPORT.md directly from evaluated results.
 import pandas as pd
 from pathlib import Path
 
-REPO_ROOT = Path(r"C:\VScode\AgriSmart-AI-integration")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 AUDIT_DIR = REPO_ROOT / "experiments/e00_validity_audit"
 CSV_PATH = AUDIT_DIR / "e12_threshold_audit_results.csv"
 REPORT_PATH = AUDIT_DIR / "E12_LOCKED_AUDIT_THRESHOLD_REPORT.md"

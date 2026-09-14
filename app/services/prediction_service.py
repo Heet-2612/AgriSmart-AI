@@ -51,7 +51,7 @@ MIN_TOP1_CONFIDENCE = 0.50
 MIN_CONFIDENCE_MARGIN = 0.15
 
 
-def check_image_statistics(image_path: str, is_default_predictor: bool) -> Tuple[float, float]:
+def check_image_statistics(image_path: str) -> Tuple[float, float]:
     """Calculate lightweight image statistics: grayscale Shannon entropy and pixel standard deviation.
 
     Stage 1: Rejects blank images, pure solid colors, and low-information graphics/documents.
@@ -72,13 +72,10 @@ def check_image_statistics(image_path: str, is_default_predictor: bool) -> Tuple
                 nonzero = probs[probs > 0]
                 entropy = float(-np.sum(nonzero * np.log2(nonzero)))
     except Exception as e:
-        if is_default_predictor:
-            raise InvalidImageError(
-                f"Uploaded file cannot be parsed as a valid image: {e}",
-                status="invalid_image",
-            )
-        # Custom mock predictor injected with dummy bytes in unit tests
-        return 999.0, 999.0
+        raise InvalidImageError(
+            f"Uploaded file cannot be parsed as a valid image: {e}",
+            status="invalid_image",
+        )
 
     if entropy < MIN_SHANNON_ENTROPY or pixel_std < MIN_PIXEL_STD:
         raise InvalidImageError(
@@ -152,21 +149,20 @@ async def process_prediction(
                 )
 
         # Stage 1 — Obvious Invalid Image Filter (basic entropy & contrast checks)
-        check_image_statistics(temp_path, is_default_predictor=is_default)
+        check_image_statistics(temp_path)
 
-        # Stage 2 — E14 Leaf / Vegetation Presence Gate
+        # Stage 2 — E14 Leaf / Vegetation Presence Gate (Strict Fail-Closed)
         active_leaf_gate = leaf_gate if leaf_gate is not None else get_leaf_presence_gate()
         try:
             with Image.open(temp_path) as pil_img:
                 img_arr = np.array(pil_img.convert("RGB"))
             is_leaf, gate_reason, telemetry = active_leaf_gate.evaluate(img_arr)
         except Exception as e:
-            if is_default:
-                raise InvalidImageError(
-                    f"Uploaded file cannot be parsed as a valid image: {e}",
-                    status="invalid_image",
-                )
-            is_leaf, gate_reason = True, "ACCEPT_PLAUSIBLE_LEAF"
+            raise InvalidImageError(
+                f"Leaf presence safety evaluation failed: {e}",
+                status="invalid_image",
+                rejection_reason="E14_EVALUATION_ERROR",
+            )
 
         if not is_leaf:
             # Rejection semantics: E14 is NOT an OOD detector and must NOT be described as one.
@@ -178,48 +174,46 @@ async def process_prediction(
                 rejection_reason=gate_reason,
             )
 
-        # Stage 3 — E12 5-Way Crop Validity Classifier & Margin Policy
-        val_res: Optional[ValidityResult] = None
-        if is_default:
-            active_validity = validity_service if validity_service is not None else get_validity_classifier()
-            val_res = active_validity.evaluate(temp_path)
+        # Stage 3 — E12 5-Way Crop Validity Classifier & Margin Policy (Always Enforced)
+        active_validity = validity_service if validity_service is not None else get_validity_classifier()
+        val_res = active_validity.evaluate(temp_path)
 
-            if not val_res.is_supported:
-                # E11 is NOT called for unsupported or inconclusive crops
-                if val_res.status == "unsupported_crop":
-                    return PredictionResponse(
-                        predicted_class="Unsupported Crop",
-                        confidence=val_res.confidence,
-                        model_version=val_res.model_version,
-                        display_name="Unsupported Crop Species",
-                        precaution="AgriSmart AI currently supports Apple, Corn, Potato, and Tomato foliage. This leaf appears to belong to an unsupported plant variety.",
-                        probabilities=val_res.probabilities,
-                        pipeline="E12-SigLIP-Validity-Gate",
-                        leaf_detected=True,
-                        roi_count=1,
-                        fallback_used=False,
-                        is_conclusive=False,
-                        status="unsupported_crop",
-                        crop_class="Other",
-                        crop_confidence=val_res.confidence,
-                    )
-                else:  # inconclusive_crop
-                    return PredictionResponse(
-                        predicted_class="Inconclusive Crop",
-                        confidence=val_res.confidence,
-                        model_version=val_res.model_version,
-                        display_name="Inconclusive Crop Identification",
-                        precaution="The crop species could not be identified with sufficient certainty. Please upload a clear photo of an Apple, Corn, Potato, or Tomato leaf.",
-                        probabilities=val_res.probabilities,
-                        pipeline="E12-SigLIP-Validity-Gate",
-                        leaf_detected=True,
-                        roi_count=1,
-                        fallback_used=False,
-                        is_conclusive=False,
-                        status="inconclusive_crop",
-                        crop_class=val_res.crop_class,
-                        crop_confidence=val_res.confidence,
-                    )
+        if not val_res.is_supported:
+            # E11 is NOT called for unsupported or inconclusive crops
+            if val_res.status == "unsupported_crop":
+                return PredictionResponse(
+                    predicted_class="Unsupported Crop",
+                    confidence=val_res.confidence,
+                    model_version=val_res.model_version,
+                    display_name="Unsupported Crop Species",
+                    precaution="AgriSmart AI currently supports Apple, Corn, Potato, and Tomato foliage. This leaf appears to belong to an unsupported plant variety.",
+                    probabilities=val_res.probabilities,
+                    pipeline="E12-SigLIP-Validity-Gate",
+                    leaf_detected=True,
+                    roi_count=1,
+                    fallback_used=False,
+                    is_conclusive=False,
+                    status="unsupported_crop",
+                    crop_class="Other",
+                    crop_confidence=val_res.confidence,
+                )
+            else:  # inconclusive_crop
+                return PredictionResponse(
+                    predicted_class="Inconclusive Crop",
+                    confidence=val_res.confidence,
+                    model_version=val_res.model_version,
+                    display_name="Inconclusive Crop Identification",
+                    precaution="The crop species could not be identified with sufficient certainty. Please upload a clear photo of an Apple, Corn, Potato, or Tomato leaf.",
+                    probabilities=val_res.probabilities,
+                    pipeline="E12-SigLIP-Validity-Gate",
+                    leaf_detected=True,
+                    roi_count=1,
+                    fallback_used=False,
+                    is_conclusive=False,
+                    status="inconclusive_crop",
+                    crop_class=val_res.crop_class,
+                    crop_confidence=val_res.confidence,
+                )
 
         # Stage 4 — E11 Disease Classifier Execution (reached only for confirmed supported crops)
         try:

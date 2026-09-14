@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-REPO_ROOT = Path(r"C:\VScode\AgriSmart-AI-integration")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEV_MANIFEST = REPO_ROOT / "experiments/e12_siglip_validity/validity_val_manifest.csv"
 
 

@@ -13,10 +13,14 @@
 
 The lightweight Leaf Presence Gate solves the critical safety flaw identified in E12—where non-leaf backgrounds (specifically a field soil bed) were classified as `Tomato` with **99.16% confidence**—**without sacrificing legitimate supported leaves**.
 
-- **Non-Plant Rejection:** Successfully rejected **100.0% (20/20)** of `NOT_LEAF` samples and **100.0% (6/6)** of `DEGENERATE` samples in the locked audit.
-- **Dangerous Failure Elimination:** All **8 dangerous `NOT_LEAF` false accepts** from raw E12 (including the soil bed, UI banners, portraits, documents, and merchandise) were **completely eliminated**.
-- **Row 52 Soil-Bed Failure:** The soil bed image (`train_tomato-blight-soil-treatment-early-tomato-blight-i_762de245.jpg`), which fooled E12 with 99.16% confidence and fooled YOLOv8n with 88.39% confidence, was **cleanly caught and rejected** (`REJECT_SPRAWLING_FIELD_BACKGROUND`) using bounding box extent and contour solidity geometry.
+- **Non-Plant Rejection:**
+  - **E14 Direct Rejection:** 19 / 20 (95.0%) of `NOT_LEAF` samples and 6 / 6 (100.0%) of `DEGENERATE` samples were directly caught and rejected by E14.
+  - **E12 Rejection:** 1 / 20 (`china.jpg`, courtyard scenery containing background trees) passed E14 foliage presence but was cleanly rejected by E12 as `Other`.
+  - **Combined E14 + E12 Rejection:** **100.0% (20/20)** of `NOT_LEAF` inputs safely blocked before reaching E11 disease classification.
+- **Dangerous Failure Elimination:** All **8 dangerous `NOT_LEAF` false accepts** from raw E12 (including the soil bed, UI banners, portraits, documents, and merchandise) were **completely eliminated** via combined E14 + E12 gating.
+- **Row 52 Soil-Bed Failure:** The soil bed image (`train_tomato-blight-soil-treatment-early-tomato-blight-i_762de245.jpg`), which fooled E12 with 99.16% confidence and fooled YOLOv8n with 88.39% confidence, was **cleanly caught and rejected directly by E14** (`REJECT_SPRAWLING_FIELD_BACKGROUND`) using bounding box extent and contour solidity geometry.
 - **Supported Leaf Preservation:** **100.0% (18/18)** of `VALID_SUPPORTED_LEAF` images passed the gate (0.0% false rejection rate on the audit; 1.58% across 4,000 development images).
+- **Production Integration:** E14 is integrated into production inference directly before E12; E12 occurs before E11. Both gates fail closed on safety exceptions.
 - **Inference Cost:** Deterministic, zero trainable neural weights, running in **~2.9 to 40 ms** on CPU.
 
 ---
@@ -93,10 +97,12 @@ The locked audit manifest ([`experiments/e00_validity_audit/test_manifest.csv`](
 | **Gate False Rejection on Supported Leaves** | N/A | **0 / 18 (0.00%)** | **0 / 18 (0.00%)** |
 | **VALID_UNSUPPORTED_LEAF Rejection** ($N=14$) | 12 / 14 (85.71%) | 12 / 14 (85.71%) | **13 / 14 (92.86%)** |
 | **Unsupported False Acceptance Rate** | 2 / 14 (14.29%) | 2 / 14 (14.29%) | **1 / 14 (7.14%)** |
-| **NOT_LEAF Rejection Rate** ($N=20$) | 12 / 20 (60.00%) | **20 / 20 (100.00%)** | **20 / 20 (100.00%)** |
-| **NOT_LEAF False Acceptance Rate** | 8 / 20 (40.00%) | **0 / 20 (0.00%)** | **0 / 20 (0.00%)** |
-| **DEGENERATE Rejection Rate** ($N=6$) | 6 / 6 (100.00%) | **6 / 6 (100.00%)** | **6 / 6 (100.00%)** |
+| **NOT_LEAF Direct E14 Rejection** ($N=20$) | N/A | **19 / 20 (95.00%)** | **19 / 20 (95.00%)** |
+| **NOT_LEAF Combined E14 + E12 Rejection** ($N=20$) | 12 / 20 (60.00%) | **20 / 20 (100.00%)** | **20 / 20 (100.00%)** |
+| **NOT_LEAF False Acceptance to Disease Model** | 8 / 20 (40.00%) | **0 / 20 (0.00%)** | **0 / 20 (0.00%)** |
+| **DEGENERATE Direct E14 Rejection Rate** ($N=6$) | 6 / 6 (100.00%) | **6 / 6 (100.00%)** | **6 / 6 (100.00%)** |
 
+*\*Note on NOT_LEAF Rejections:* E14 directly rejected 19/20 non-leaf images. The remaining 1 sample (`china.jpg`, architectural scenery with background foliage) was safely rejected by E12 as `Other`, yielding **100% combined rejection** with zero non-leaf images reaching E11.
 *\*Note on Supported False Rejection:* The 1 supported sample classified as `Other` across all systems was Row 2 (`PlantVillage_Potato`), where E12 itself produced top-1 prediction `Other` with 74.71% probability. **The Leaf Gate passed 100% (18/18) of supported leaves.**
 
 ---

@@ -216,9 +216,9 @@ def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
         else:
             repo_root = Path(__file__).resolve().parents[2]
             candidates = [
+                repo_root / "tests" / "fixtures" / "samples" / "potato_leaf.jpg",
                 repo_root / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
                 repo_root.parent / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
-                repo_root.parent / "AgriSmart-AI-main" / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
             ]
             potato_sample = next((c for c in candidates if c.exists()), candidates[0])
         test_img = potato_sample if potato_sample.exists() else sample_leaf_image

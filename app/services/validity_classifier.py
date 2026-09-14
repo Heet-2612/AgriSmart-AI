@@ -69,9 +69,10 @@ class ValidityClassifier:
     def __init__(self, checkpoint_path: Optional[Union[str, Path]] = None):
         target_path = Path(checkpoint_path or settings.VALIDITY_CHECKPOINT_PATH)
         if not target_path.exists() or not target_path.is_file():
+            repo_root = Path(__file__).resolve().parents[2]
             candidates = [
                 Path("model/checkpoints/validity_classifier_baseline.pt"),
-                Path("experiments/e12_siglip_validity/validity_classifier_baseline.pt"),
+                repo_root / "model/checkpoints/validity_classifier_baseline.pt",
             ]
             for c in candidates:
                 if c.exists() and c.is_file():
