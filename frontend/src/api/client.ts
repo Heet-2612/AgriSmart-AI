@@ -3,6 +3,8 @@ import {
   PredictionResponse,
   CropRecommendationRequest,
   CropRecommendationResponse,
+  WeatherResponse,
+  SeasonalClimate,
   ChatRequest,
   ChatAnswer,
   ChatSessionResponse,
@@ -147,6 +149,22 @@ export async function recommendCrop(
 
 export const recommendCrops = recommendCrop;
 
+export async function getWeather(location: string): Promise<WeatherResponse> {
+  const trimmed = location.trim();
+  if (!trimmed) {
+    throw new ApiError(400, 'Location query cannot be empty.');
+  }
+
+  const res = await fetch(`/api/weather?location=${encodeURIComponent(trimmed)}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errorData?.detail || `Weather retrieval failed with status: ${res.status}`;
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
 export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
   const trimmedQuestion = data.question ? data.question.trim() : '';
   if (!trimmedQuestion || trimmedQuestion.length > 500) {
@@ -188,6 +206,25 @@ export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
         ? errorData.detail
         : 'Please provide a valid question for the AI assistant (1–500 characters).';
     }
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
+export async function getSeasonalClimate(
+  state: string,
+  district?: string,
+  season?: string
+): Promise<SeasonalClimate> {
+  const params = new URLSearchParams({ state: state.trim() });
+  if (district?.trim()) params.append('district', district.trim());
+  if (season?.trim()) params.append('season', season.trim());
+
+  const res = await fetch(`/api/seasonal-climate?${params.toString()}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errorData?.detail || `Seasonal climate retrieval failed with status: ${res.status}`;
     throw new ApiError(res.status, message);
   }
 

@@ -61,6 +61,7 @@ class CropRecommendationRequest(BaseModel):
     rainfall: float = Field(..., ge=0.0, le=5000.0)
     soil_type: str
     previous_crop: str
+    season: Optional[str] = None
     top_k: int = Field(default=3, ge=1, le=10)
 
 class RankedCropRecommendation(BaseModel):
@@ -83,6 +84,49 @@ class DiseaseMetadata(BaseModel):
     symptoms: str
     treatment: str
     precautions: Optional[str] = None
+
+
+class WeatherLocation(BaseModel):
+    name: str
+    country: str = "Unknown"
+    latitude: float
+    longitude: float
+    state: Optional[str] = None
+    district: Optional[str] = None
+
+
+class WeatherCurrent(BaseModel):
+    temperature: float
+    humidity: float
+    wind_speed: float
+    weather_code: int
+    condition: str
+    precipitation: Optional[float] = 0.0
+
+
+class WeatherDaily(BaseModel):
+    temp_min: float
+    temp_max: float
+    precipitation_sum: float
+    precipitation_probability: float
+
+
+class SeasonalClimate(BaseModel):
+    season: str
+    temperature_mean: float
+    humidity_mean: float
+    rainfall_normal: float
+    region: str
+    soil_type_default: Optional[str] = None
+
+
+class WeatherResponse(BaseModel):
+    location: WeatherLocation
+    current: WeatherCurrent
+    daily: WeatherDaily
+    climate: Optional[SeasonalClimate] = None
+    advisories: list[str] = []
+    timestamp: Optional[datetime] = None
 
 
 class WeatherContext(BaseModel):
@@ -193,10 +237,8 @@ class ChatMessageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ==========================================
-# Simulated IoT Sensor Telemetry Schemas
-# ==========================================
-
+# ===================================# Simulated IoT Sensor Telemetry Schemas
+# ===================================
 class SensorTelemetry(BaseModel):
     soil_moisture_percent: float = Field(..., ge=0.0, le=100.0, description="Volumetric or capacitive soil moisture %")
     soil_temperature_celsius: float = Field(..., ge=-10.0, le=60.0, description="Root-zone temperature in °C")
@@ -219,10 +261,8 @@ class IoTPresetsResponse(BaseModel):
     presets: list[IoTPreset]
 
 
-# ==========================================
-# Sustainability Score Schemas
-# ==========================================
-
+# ===================================# Sustainability Score Schemas
+# ===================================
 class SustainabilityScoreRequest(BaseModel):
     crop: str = Field(..., min_length=1, description="Target crop name")
     farm_area_hectares: float = Field(default=0.1, gt=0.0, le=10000.0, description="Farm plot size in hectares")
