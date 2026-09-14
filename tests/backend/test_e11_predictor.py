@@ -178,46 +178,18 @@ def test_13_missing_checkpoint_produces_graceful_model_not_ready(sample_leaf_ima
 
 def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
     """Verify live POST /api/predictions endpoint executes end-to-end with E11 predictor."""
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-    from app.db.models.base import Base
-    from app.dependencies import get_db_session
-    import asyncio
+    client = TestClient(app)
+    with open(sample_leaf_image, "rb") as f:
+        response = client.post(
+            "/api/predictions",
+            files={"image": ("leaf.jpg", f, "image/jpeg")},
+        )
 
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    body = response.json()
 
-    async def init_db():
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.run(init_db())
-
-    async def override_get_db_session():
-        async with session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
-
-    app.dependency_overrides[get_db_session] = override_get_db_session
-    try:
-        client = TestClient(app)
-        with open(sample_leaf_image, "rb") as f:
-            response = client.post(
-                "/api/predictions",
-                files={"image": ("leaf.jpg", f, "image/jpeg")},
-            )
-
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        body = response.json()
-
-        assert body["predicted_class"] in HYBRID10_CLASSES
-        assert 0.0 <= body["confidence"] <= 1.0
-        assert len(body["probabilities"]) == 10
-        assert body["display_name"] is not None
-        assert body["model_version"] == "E11-SigLIP-HYBRID10-PRODUCTION"
-    finally:
-        app.dependency_overrides.pop(get_db_session, None)
-
+    assert body["predicted_class"] in HYBRID10_CLASSES
+    assert 0.0 <= body["confidence"] <= 1.0
+    assert len(body["probabilities"]) == 10
+    assert body["display_name"] is not None
+    assert body["model_version"] == "E11-SigLIP-HYBRID10-PRODUCTION"
