@@ -215,10 +215,12 @@ def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
             potato_sample = Path(test_data_dir) / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
         else:
             repo_root = Path(__file__).resolve().parents[2]
-            cand1 = repo_root / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
-            cand2 = repo_root.parent / "AgriSmart-AI-main" / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
-            cand3 = Path(r"C:\VScode\AgriSmart-AI-main\data\plantvillage_benchmark\val\Potato___Early_blight\04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG")
-            potato_sample = cand1 if cand1.exists() else (cand2 if cand2.exists() else cand3)
+            candidates = [
+                repo_root / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
+                repo_root.parent / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
+                repo_root.parent / "AgriSmart-AI-main" / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG",
+            ]
+            potato_sample = next((c for c in candidates if c.exists()), candidates[0])
         test_img = potato_sample if potato_sample.exists() else sample_leaf_image
         with open(test_img, "rb") as f:
             response = client.post(

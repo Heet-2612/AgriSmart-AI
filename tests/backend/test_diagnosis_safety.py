@@ -13,17 +13,20 @@ from app.dependencies import get_predictor, get_db_session
 
 def _resolve_test_image_root() -> Path:
     """Resolve the test image dataset root directory portably."""
-    for env_key in ("AGRISMART_TEST_DATA_DIR", "TEST_IMAGE_ROOT"):
+    for env_key in ("AGRISMART_TEST_DATA_DIR", "TEST_IMAGE_ROOT", "DATA_DIR"):
         val = os.getenv(env_key)
         if val and Path(val).exists():
             return Path(val)
     repo_root = Path(__file__).resolve().parents[2]
-    if (repo_root / "data").exists():
-        return repo_root / "data"
-    sibling_data = repo_root.parent / "AgriSmart-AI-main" / "data"
-    if sibling_data.exists():
-        return sibling_data
-    return Path(r"C:\VScode\AgriSmart-AI-main\data")
+    candidates = [
+        repo_root / "data",
+        repo_root.parent / "data",
+        repo_root.parent / "AgriSmart-AI-main" / "data",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return cand
+    return repo_root / "data"
 
 
 TEST_IMAGE_ROOT = _resolve_test_image_root()

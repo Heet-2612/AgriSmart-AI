@@ -11,6 +11,7 @@ Verifies:
 7. E12 unsupported crop short-circuits E11 (E11 is NEVER called).
 """
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pandas as pd
@@ -30,9 +31,9 @@ AUDIT_MANIFEST = REPO_ROOT / "experiments/e00_validity_audit/test_manifest.csv"
 def resolve_audit_image_path(raw_path: str) -> Path:
     """Resolve an audit image path portably across environments."""
     p = Path(raw_path)
-    if p.exists():
-        return p
+    norm = str(p).replace("\\", "/")
 
+    # 1. Check explicit test data / audit root environment variables
     for env_key in ("AGRISMART_TEST_DATA_DIR", "TEST_IMAGE_ROOT", "AUDIT_DATA_DIR"):
         env_val = os.getenv(env_key)
         if env_val:
@@ -40,7 +41,6 @@ def resolve_audit_image_path(raw_path: str) -> Path:
             direct = env_dir / p.name
             if direct.exists():
                 return direct
-            norm = str(p).replace("\\", "/")
             for marker in ("data/", "plantvillage/", "plantdoc/", "artifacts_suite/", "negative_suite/"):
                 if marker in norm:
                     sub = norm.split(marker, 1)[1]
@@ -50,19 +50,51 @@ def resolve_audit_image_path(raw_path: str) -> Path:
                     cand2 = env_dir / sub
                     if cand2.exists():
                         return cand2
+            for match in env_dir.rglob(p.name):
+                if match.is_file():
+                    return match
 
-    norm = str(p).replace("\\", "/")
-    if "AgriSmart-AI-integration/" in norm:
-        sub = norm.split("AgriSmart-AI-integration/", 1)[1]
-        cand = REPO_ROOT / sub
+    # 2. Check repo-relative experiments path
+    if "experiments/" in norm:
+        sub = norm.split("experiments/", 1)[1]
+        cand = REPO_ROOT / "experiments" / sub
         if cand.exists():
             return cand
 
-    if "AgriSmart-AI-main/" in norm:
-        sub = norm.split("AgriSmart-AI-main/", 1)[1]
-        cand = REPO_ROOT.parent / "AgriSmart-AI-main" / sub
-        if cand.exists():
-            return cand
+    # 3. Check repo-relative data path and candidate parent data paths
+    if "data/" in norm:
+        sub = norm.split("data/", 1)[1]
+        for base in (
+            REPO_ROOT / "data",
+            REPO_ROOT.parent / "data",
+            REPO_ROOT.parent / "AgriSmart-AI-main" / "data",
+        ):
+            cand = base / sub
+            if cand.exists():
+                return cand
+
+    # 4. Handle third-party package sample images portably
+    if "matplotlib" in norm and "sample_data" in norm:
+        try:
+            import matplotlib
+            mpl_data = Path(matplotlib.__file__).parent / "mpl-data" / "sample_data" / p.name
+            if mpl_data.exists():
+                return mpl_data
+        except Exception:
+            pass
+
+    if "china.jpg" in p.name.lower():
+        try:
+            import sklearn
+            sk_img = Path(sklearn.__file__).parent / "datasets" / "images" / "china.jpg"
+            if sk_img.exists():
+                return sk_img
+        except Exception:
+            pass
+
+    # 5. Fallback to existing path if present on current system
+    if p.exists():
+        return p
 
     return p
 
@@ -178,7 +210,7 @@ def test_6_e14_acceptance_proceeds_to_e12_and_e11(audit_df):
     client = TestClient(app)
 
     sup_row = audit_df[audit_df["source_category"] == "PlantVillage_Potato"].iloc[0]
-    img_path = Path(sup_row["path"])
+    img_path = resolve_audit_image_path(sup_row["path"])
 
     with open(img_path, "rb") as f:
         res = client.post("/api/predictions", files={"image": (img_path.name, f, "image/jpeg")})
@@ -196,7 +228,7 @@ def test_7_e12_unsupported_crop_short_circuits_e11(audit_df):
 
     # Soybean image from PlantVillage in locked audit
     soy_row = audit_df[audit_df["source_category"] == "PlantVillage_Soybean"].iloc[0]
-    img_path = Path(soy_row["path"])
+    img_path = resolve_audit_image_path(soy_row["path"])
 
     with patch.object(DefaultPredictor, "predict") as mock_e11:
         with open(img_path, "rb") as f:
