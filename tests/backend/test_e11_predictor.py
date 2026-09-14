@@ -51,9 +51,15 @@ EXPECTED_HYBRID10_ORDER = [
 
 @pytest.fixture
 def sample_leaf_image(tmp_path):
-    """Create a synthetic test image."""
+    """Create a synthetic textured test image."""
     img_path = tmp_path / "test_leaf.jpg"
-    img = Image.new("RGB", (300, 300), color=(45, 120, 35))
+    arr = np.zeros((300, 300, 3), dtype=np.uint8)
+    for i in range(300):
+        for j in range(300):
+            arr[i, j, 0] = int(35 + 20 * np.sin(i / 10.0))
+            arr[i, j, 1] = int(120 + 40 * np.sin((i + j) / 15.0))
+            arr[i, j, 2] = int(30 + 15 * np.cos(j / 10.0))
+    img = Image.fromarray(arr)
     img.save(img_path)
     return img_path
 
@@ -178,23 +184,55 @@ def test_13_missing_checkpoint_produces_graceful_model_not_ready(sample_leaf_ima
 
 def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
     """Verify live POST /api/predictions endpoint executes end-to-end with E11 predictor."""
-    client = TestClient(app)
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from app.db.models.base import Base
     from app.dependencies import get_db_session
-    from unittest.mock import AsyncMock
-    mock_db = AsyncMock()
-    app.dependency_overrides[get_db_session] = lambda: mock_db
-    with open(sample_leaf_image, "rb") as f:
-        response = client.post(
-            "/api/predictions",
-            files={"image": ("leaf.jpg", f, "image/jpeg")},
-        )
+    import asyncio
 
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-    body = response.json()
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    assert body["predicted_class"] in HYBRID10_CLASSES
-    assert 0.0 <= body["confidence"] <= 1.0
-    assert len(body["probabilities"]) == 10
-    assert body["display_name"] is not None
-    assert body["model_version"] == "E11-SigLIP-HYBRID10-PRODUCTION"
-    app.dependency_overrides.clear()
+    async def init_db():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run(init_db())
+
+    async def override_get_db_session():
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+    try:
+        client = TestClient(app)
+        test_data_dir = os.getenv("AGRISMART_TEST_DATA_DIR") or os.getenv("TEST_IMAGE_ROOT")
+        if test_data_dir:
+            potato_sample = Path(test_data_dir) / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
+        else:
+            repo_root = Path(__file__).resolve().parents[2]
+            cand1 = repo_root / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
+            cand2 = repo_root.parent / "AgriSmart-AI-main" / "data" / "plantvillage_benchmark" / "val" / "Potato___Early_blight" / "04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG"
+            cand3 = Path(r"C:\VScode\AgriSmart-AI-main\data\plantvillage_benchmark\val\Potato___Early_blight\04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG")
+            potato_sample = cand1 if cand1.exists() else (cand2 if cand2.exists() else cand3)
+        test_img = potato_sample if potato_sample.exists() else sample_leaf_image
+        with open(test_img, "rb") as f:
+            response = client.post(
+                "/api/predictions",
+                files={"image": ("leaf.jpg", f, "image/jpeg")},
+            )
+
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        body = response.json()
+
+        assert body["predicted_class"] in HYBRID10_CLASSES
+        assert 0.0 <= body["confidence"] <= 1.0
+        assert len(body["probabilities"]) == 10
+        assert body["display_name"] is not None
+        assert body["model_version"] == "E11-SigLIP-HYBRID10-PRODUCTION"
+    finally:
+        app.dependency_overrides.pop(get_db_session, None)

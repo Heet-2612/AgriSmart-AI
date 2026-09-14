@@ -1,0 +1,59 @@
+path,source_category,ground_truth_group,description,width,height,mode
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Potato___Early_blight\001187a0-57ab-4329-baff-e7246a9edeb0___RS_Early.B 8178.JPG,PlantVillage_Potato,VALID_SUPPORTED_LEAF,PlantVillage Potato Early Blight,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Potato___healthy\07dfb451-4378-49d1-b699-33a5fc49ff07___RS_HL 5399.JPG,PlantVillage_Potato,VALID_SUPPORTED_LEAF,PlantVillage Potato Healthy,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot\045080ca-8b98-4320-adcc-e431f88c1aaa___RS_GLSp 7313.JPG,PlantVillage_Corn,VALID_SUPPORTED_LEAF,PlantVillage Corn Gray Leaf Spot,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Corn_(maize)___healthy\03fc887f-e206-4233-8829-ff7070bb3449___R.S_HL 5519 copy 2.jpg,PlantVillage_Corn,VALID_SUPPORTED_LEAF,PlantVillage Corn Healthy,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Tomato___Tomato_Yellow_Leaf_Curl_Virus\009dd1f5-281a-4e54-9f80-a068d0d8cfcd___YLCV_NREC 2162.JPG,PlantVillage_Tomato,VALID_SUPPORTED_LEAF,PlantVillage Tomato YLCV,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Tomato___healthy\01c1da17-8d9f-4d69-8a1e-58d37453d3c3___RS_HL 9641.JPG,PlantVillage_Tomato,VALID_SUPPORTED_LEAF,PlantVillage Tomato Healthy,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Apple___Apple_scab\01a66316-0e98-4d3b-a56f-d78752cd043f___FREC_Scab 3003.JPG,PlantVillage_Apple,VALID_SUPPORTED_LEAF,PlantVillage Apple Scab,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Apple___Cedar_apple_rust\04da297e-5238-41b1-a8a0-0c87c6c2f21f___FREC_C.Rust 4394.JPG,PlantVillage_Apple,VALID_SUPPORTED_LEAF,PlantVillage Apple Cedar Rust,256,256,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\rizwan123456789\potato-disease-leaf-datasetpld\versions\1\PLD_3_Classes_256\Testing\Early_Blight\Early_Blight_10.jpg,Field_Potato_PLD,VALID_SUPPORTED_LEAF,Field Potato Early Blight (PLD Pakistan),256,256,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\rizwan123456789\potato-disease-leaf-datasetpld\versions\1\PLD_3_Classes_256\Testing\Healthy\Healthy_10.jpg,Field_Potato_PLD,VALID_SUPPORTED_LEAF,Field Potato Healthy (PLD Pakistan),256,256,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\rahimanshu\ccmt-plant-disease-dataset\versions\1\CCMT_FInal Dataset\Maize_leaf spot\leaf spot1002_.jpg,Field_Corn_CCMT,VALID_SUPPORTED_LEAF,Field Corn Gray Leaf Spot (CCMT Uganda),400,400,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\nirmalsankalana\apple-leaf-disease-dataset\versions\2\data\scab\Train_1049.jpg,Field_Apple_FGVC7,VALID_SUPPORTED_LEAF,Field Apple Scab (FGVC7 Orchard),2048,1365,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\thuanai1\fieldplant-dataset\versions\1\FieldPlant\train\Corn Gray leaf spot\Mais_Cercosporiose_-2-_jpg.rf.117b85e81d2fc749bd3c81d405999a22.jpg,Field_Corn_FieldPlant,VALID_SUPPORTED_LEAF,Field Corn GLS (FieldPlant),4608,3456,RGB
+C:\Users\Aditya\.cache\kagglehub\datasets\nirmalsankalana\taiwan-tomato-leaves-dataset\versions\1\data\Train\health\h106.jpg,Field_Tomato_Taiwan,VALID_SUPPORTED_LEAF,Field Tomato Healthy (Taiwan),227,227,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Potato___Early_blight\test_3023.jpg,PlantDoc_Potato,VALID_SUPPORTED_LEAF,PlantDoc Potato Early Blight in field,1024,768,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot\test_IMG_42231.jpg,PlantDoc_Corn,VALID_SUPPORTED_LEAF,PlantDoc Corn GLS in field,3264,2448,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Tomato___healthy\test_1684.jpg,PlantDoc_Tomato,VALID_SUPPORTED_LEAF,PlantDoc Tomato Healthy in field,563,631,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Apple___Apple_scab\test_052609%20Hartman%20Crabapple%20scab%20single%20leaf.JPG.jpg,PlantDoc_Apple,VALID_SUPPORTED_LEAF,PlantDoc Apple Scab in field,496,348,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Soybean___healthy\00247bff-26dc-445a-8d11-0b2592787ec3___RS_HL 6869.JPG,PlantVillage_Soybean,VALID_UNSUPPORTED_LEAF,PlantVillage Soybean Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Soybean___healthy\test_07feb_ma_sbr3.JPG.jpg,PlantDoc_Soybean,VALID_UNSUPPORTED_LEAF,PlantDoc Soybean Healthy leaf,1296,864,RGB
+"C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Pepper,_bell___healthy\002f87b7-e1a5-49e5-a422-bb423630ded5___JR_HL 8068.JPG",PlantVillage_Pepper,VALID_UNSUPPORTED_LEAF,PlantVillage Bell Pepper Healthy leaf,256,256,RGB
+"C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Pepper,_bell___Bacterial_spot\03bb7042-3fd5-42e1-aa2c-d51d6843704c___JR_B.Spot 8925.JPG",PlantVillage_Pepper,VALID_UNSUPPORTED_LEAF,PlantVillage Bell Pepper Bacterial Spot leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Strawberry___healthy\01e591c9-e3e7-4edc-8211-13081f4d5e7a___RS_HL 1979.JPG,PlantVillage_Strawberry,VALID_UNSUPPORTED_LEAF,PlantVillage Strawberry Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Strawberry___healthy\test_strawberry-leaf--stock-photo-1431216.jpg,PlantDoc_Strawberry,VALID_UNSUPPORTED_LEAF,PlantDoc Strawberry Healthy leaf,1300,1248,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Grape___healthy\03027791-26bb-4c46-960e-8df76e27042c___Mt.N.V_HL 6070.JPG,PlantVillage_Grape,VALID_UNSUPPORTED_LEAF,PlantVillage Grape Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Grape___Black_rot\03423777-68b9-430e-9787-fbd776740881___FAM_B.Rot 0346.JPG,PlantVillage_Grape,VALID_UNSUPPORTED_LEAF,PlantVillage Grape Black Rot leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Peach___healthy\017d3d86-12bf-4280-8929-10dcd504ac46___Rutg._HL 3671.JPG,PlantVillage_Peach,VALID_UNSUPPORTED_LEAF,PlantVillage Peach Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Peach___healthy\test_00pe.jpg,PlantDoc_Peach,VALID_UNSUPPORTED_LEAF,PlantDoc Peach Healthy leaf,720,1000,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Blueberry___healthy\00fee259-67b7-4dd7-8b36-12503bbdba14___RS_HL 2681.JPG,PlantVillage_Blueberry,VALID_UNSUPPORTED_LEAF,PlantVillage Blueberry Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Blueberry___healthy\test_blueberry-leaves-normal-above-and-iron-deficient-below-bgahf8.jpg,PlantDoc_Blueberry,VALID_UNSUPPORTED_LEAF,PlantDoc Blueberry Healthy leaf,390,540,RGB
+C:\VScode\AgriSmart-AI-main\data\plantvillage\val\Raspberry___healthy\020e14fb-6016-4d7f-b489-445e0021b58e___Mary_HL 6324.JPG,PlantVillage_Raspberry,VALID_UNSUPPORTED_LEAF,PlantVillage Raspberry Healthy leaf,256,256,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Raspberry___healthy\test_depositphotos_1323264-Raspberry-leaf-on-white.jpg,PlantDoc_Raspberry,VALID_UNSUPPORTED_LEAF,PlantDoc Raspberry Healthy leaf,1024,772,RGB
+C:\VScode\GlobeTrotter_Hackathon\.agents\skills\ponytail\assets\waitlist-banner-es.png,Screenshot_UI,NOT_LEAF,Website Banner Spanish (yields Apple Cedar Rust on E11),1280,400,RGB
+C:\VScode\GlobeTrotter_Hackathon\.agents\skills\ponytail\assets\waitlist-banner-ko.png,Screenshot_UI,NOT_LEAF,Website Banner Korean (yields Apple Cedar Rust on E11),1280,400,RGB
+C:\VScode\GlobeTrotter_Hackathon\.agents\skills\ponytail\assets\social-preview.png,Screenshot_UI,NOT_LEAF,Social Preview Website Banner (yields Apple Healthy on E11),1280,640,RGBA
+C:\VScode\GlobeTrotter_Hackathon\frontend\public\assets\veya-logo.png,Screenshot_UI,NOT_LEAF,Web Application Logo (yields Apple Cedar Rust on E11),1536,1024,RGBA
+C:\VScode\GlobeTrotter_Hackathon\.agents\skills\ponytail\assets\logo-dark.png,Screenshot_UI,NOT_LEAF,Dark Theme Web Logo (yields Tomato Healthy on E11),1085,1241,RGBA
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\document_invoice_0.png,Document_Text,NOT_LEAF,Rendered Document Invoice 0,224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\document_invoice_1.png,Document_Text,NOT_LEAF,Rendered Document Invoice 1,224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\document_invoice_2.png,Document_Text,NOT_LEAF,Rendered Document Invoice 2,224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\document_invoice_3.png,Document_Text,NOT_LEAF,Rendered Document Invoice 3,224,224,RGB
+C:\Users\Aditya\Downloads\trading_er_diagram.png,Document_Text,NOT_LEAF,Trading System Database Schema Diagram,6146,4415,RGBA
+C:\VScode\AgriSmart-AI-integration\.venv\Lib\site-packages\matplotlib\mpl-data\sample_data\Minduka_Present_Blue_Pack.png,Object,NOT_LEAF,Minduka Present Blue Pack gift box object,128,128,RGBA
+C:\Users\Aditya\Downloads\formula 1.jpg,Object_Vehicle,NOT_LEAF,Formula 1 Racing Vehicle photograph,735,414,RGB
+C:\Users\Aditya\Downloads\Red Bull Racing.jpg,Object_Vehicle,NOT_LEAF,Red Bull Racing Formula 1 Car photograph,736,1472,RGB
+C:\VScode\AgriSmart-AI-integration\.venv\Lib\site-packages\matplotlib\mpl-data\sample_data\grace_hopper.jpg,Person,NOT_LEAF,Grace Hopper portrait photograph,512,600,RGB
+C:\Users\Aditya\Downloads\Star boy.jpg,Person,NOT_LEAF,Human portrait photograph,1187,675,RGB
+C:\VScode\GlobeTrotter_Hackathon\.agents\skills\ponytail\assets\retriever-icon.png,Animal_Graphic,NOT_LEAF,Golden retriever animal illustration,256,256,RGBA
+C:\VScode\AgriSmart-AI-integration\.venv\Lib\site-packages\sklearn\datasets\images\china.jpg,Architecture,NOT_LEAF,China Temple Architecture photograph,640,427,RGB
+C:\Windows\Web\Wallpaper\ThemeA\img20.jpg,Landscape,NOT_LEAF,Natural desert landscape wallpaper,3840,2400,RGB
+C:\Windows\Web\Wallpaper\ThemeB\img24.jpg,Landscape,NOT_LEAF,Natural landscape wallpaper,3840,2401,RGB
+C:\VScode\AgriSmart-AI-main\data\plantdoc\external_test\Tomato___Early_blight\train_tomato-blight-soil-treatment-early-tomato-blight-i_762de245.jpg,Soil,NOT_LEAF,Field soil bed with treatment,1063,734,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\pure_white.png,Degenerate_Synthetic,DEGENERATE,"Pure White [255, 255, 255]",224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\pure_black.png,Degenerate_Synthetic,DEGENERATE,"Pure Black [0, 0, 0]",224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\solid_green.png,Degenerate_Synthetic,DEGENERATE,"Solid Green [0, 128, 0]",224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\solid_brown.png,Degenerate_Synthetic,DEGENERATE,"Solid Brown [139, 69, 19]",224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\gaussian_noise_0.png,Degenerate_Synthetic,DEGENERATE,"Gaussian Noise mean=128, std=40",224,224,RGB
+C:\VScode\AgriSmart-AI-integration\experiments\e11_phase2_ood\artifacts_suite\uniform_noise_0.png,Degenerate_Synthetic,DEGENERATE,"Uniform Random Noise [0, 255]",224,224,RGB
