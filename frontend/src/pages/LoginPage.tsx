@@ -28,7 +28,10 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
         onBack();
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed. Please check your credentials.';
+      let msg = 'Authentication failed. Please check your credentials.';
+      if (err instanceof Error && err.message && !err.message.includes('[object Object]')) {
+        msg = err.message;
+      }
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -127,6 +130,7 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
             <div
               role="alert"
               className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 leading-relaxed"
+            >
               {errorMessage}
             </div>
           )}

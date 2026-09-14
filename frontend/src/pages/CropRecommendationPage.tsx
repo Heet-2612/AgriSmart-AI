@@ -16,6 +16,7 @@ import {
   FileText,
   RefreshCw,
   RotateCcw,
+  Leaf,
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { recommendCrop, ApiError } from '../api/client';
@@ -51,6 +52,7 @@ export type FormErrors = Partial<Record<keyof CropRecommendationFormData, string
 interface CropRecommendationPageProps {
   onBack: () => void;
   onSubmit?: (data: CropRecommendationFormData) => void;
+  onNavigateSustainability?: () => void;
 }
 
 const INITIAL_FORM_DATA: CropRecommendationFormData = {
@@ -81,7 +83,11 @@ export function getConfidencePercent(conf: unknown): number {
   return Math.min(100, Math.max(0, percent));
 }
 
-export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationPageProps) {
+export function CropRecommendationPage({
+  onBack,
+  onSubmit,
+  onNavigateSustainability,
+}: CropRecommendationPageProps) {
   const [formData, setFormData] = useState<CropRecommendationFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -304,18 +310,45 @@ export function CropRecommendationPage({ onBack, onSubmit }: CropRecommendationP
     >
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
 
-        {/* Top Back Action */}
-        <div className="mb-6 text-left">
+        {/* Top Back Action & Farm Insights Sub-Nav */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <Button
             type="button"
             variant="secondary"
             onClick={onBack}
-            className="px-4 py-2 text-xs font-semibold rounded-xl gap-2"
+            className="px-4 py-2 text-xs font-semibold rounded-xl gap-2 w-fit"
             aria-label="Back to Plant Diagnosis"
           >
             <ArrowLeft size={15} aria-hidden="true" />
             <span>Back to Plant Diagnosis</span>
           </Button>
+
+          {/* Farm Insights Sub-Tabs */}
+          <div
+            className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/80 shadow-2xs w-fit"
+            role="tablist"
+            aria-label="Farm Insights Navigation"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 shadow-2xs"
+            >
+              <Sprout size={14} className="text-emerald-600" />
+              <span>Crop Recommendation</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              onClick={onNavigateSustainability}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors cursor-pointer"
+            >
+              <Leaf size={14} className="text-emerald-600" />
+              <span>Sustainability Score</span>
+            </button>
+          </div>
         </div>
 
         {/* Main Form Workbench Card */}

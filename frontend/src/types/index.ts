@@ -90,3 +90,4 @@ export interface CropRecommendationResponse {
 }
 
 export * from './auth';
+export * from './sustainability';

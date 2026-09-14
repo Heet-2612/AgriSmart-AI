@@ -369,6 +369,9 @@ export function DiagnosisChatAssistant({
   };
 
   const fetchSessions = async () => {
+    if (status !== 'authenticated') {
+      return;
+    }
     setSessionsLoading(true);
     setSessionsError(null);
     try {
@@ -548,6 +551,26 @@ export function DiagnosisChatAssistant({
         </div>
 
         {historyOpen ? (
+          status !== 'authenticated' ? (
+            <div
+              className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50"
+              role="region"
+              aria-label="Chat history viewer"
+            >
+              <History size={36} className="text-emerald-600 mb-3" />
+              <h3 className="text-sm font-bold text-slate-800 mb-1">Persistent History Requires Sign In</h3>
+              <p className="text-xs text-slate-500 max-w-sm mb-4">
+                Chat history is saved securely to your account. Sign in to view past conversations or continue asking questions as a guest.
+              </p>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+              >
+                Return to Current Chat
+              </button>
+            </div>
+          ) : (
           /* ── Authenticated History Drawer / Viewer ── */
           <div
             className="flex-1 flex flex-col sm:flex-row overflow-hidden bg-slate-50"
@@ -710,7 +733,7 @@ export function DiagnosisChatAssistant({
               )}
             </div>
           </div>
-        ) : (
+        )) : (
           <>
             {/* ── Message History Stream ── */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">

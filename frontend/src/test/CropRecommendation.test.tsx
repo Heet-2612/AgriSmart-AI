@@ -82,11 +82,13 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     ).not.toBeInTheDocument();
   });
 
-  it('renders the "Coming Soon" badge for the Sustainability Score feature', () => {
+  it('renders the "Ready to Use" badge for both feature cards', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
-    const comingSoonLabels = screen.getAllByText(/coming soon/i);
-    expect(comingSoonLabels).toHaveLength(1);
+    const readyLabels = screen.getAllByText(/ready to use/i);
+    expect(readyLabels).toHaveLength(2);
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/feature in development/i)).not.toBeInTheDocument();
   });
 
   it('renders Crop Recommendation CTA button which is active and interactive', () => {
@@ -101,12 +103,21 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
-  it('ensures Cards 2 and 3 do not contain clickable action buttons', () => {
-    render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
+  it('renders interactive Sustainability Score CTA button and triggers navigation', () => {
+    const handleSelectMock = vi.fn();
+    render(
+      <BonusFeaturesSection
+        onSelectCropRecommendation={vi.fn()}
+        onSelectSustainabilityScore={handleSelectMock}
+      />
+    );
 
-    const allButtons = screen.getAllByRole('button');
-    expect(allButtons).toHaveLength(1);
-    expect(allButtons[0]).toHaveTextContent(/try crop recommendation/i);
+    const ctaButton = screen.getByRole('button', { name: /open sustainability score/i });
+    expect(ctaButton).toBeInTheDocument();
+    expect(ctaButton).toBeEnabled();
+
+    fireEvent.click(ctaButton);
+    expect(handleSelectMock).toHaveBeenCalledTimes(1);
   });
 
   it('navigates from Home to Crop Recommendation form when clicking Try Crop Recommendation', () => {
@@ -138,6 +149,17 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
 
     expect(
       screen.getByRole('heading', { name: /plant disease diagnosis/i, level: 1 })
+    ).toBeInTheDocument();
+  });
+
+  it('navigates from Home to Sustainability Score form when clicking Open Sustainability Score', () => {
+    render(<App />);
+
+    const sustainBtn = screen.getByRole('button', { name: /open sustainability score/i });
+    fireEvent.click(sustainBtn);
+
+    expect(
+      screen.getByRole('heading', { name: /farm sustainability & water score/i, level: 1 })
     ).toBeInTheDocument();
   });
 

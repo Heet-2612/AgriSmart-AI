@@ -3,12 +3,13 @@ import { Leaf } from 'lucide-react';
 import { Header } from './components/Header';
 import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
+import { SustainabilityScorePage } from './pages/SustainabilityScorePage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { AuthProvider } from './context/AuthContext';
 import { AuthModal } from './components/auth/AuthModal';
 
-export type AppView = 'home' | 'crop-recommendation' | 'login' | 'signup';
+export type AppView = 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -105,11 +106,11 @@ function AppShell() {
   };
 
   const [activeView, setActiveView] = useState<AppView>(getInitialView);
-  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation'>('home');
+  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const navigateTo = (view: AppView) => {
-    if (activeView === 'home' || activeView === 'crop-recommendation') {
+    if (activeView === 'home' || activeView === 'crop-recommendation' || activeView === 'sustainability') {
       setPreviousView(activeView);
     }
     setActiveView(view);
@@ -118,6 +119,7 @@ function AppShell() {
 
   const handleNavigateHome = () => navigateTo('home');
   const handleOpenCropRecommendation = () => navigateTo('crop-recommendation');
+  const handleOpenSustainability = () => navigateTo('sustainability');
   const handleNavigateLogin = () => navigateTo('login');
   const handleNavigateSignup = () => navigateTo('signup');
 
@@ -132,16 +134,29 @@ function AppShell() {
         activeView={activeView}
         onNavigateHome={handleNavigateHome}
         onNavigateCropRecommendation={handleOpenCropRecommendation}
+        onNavigateSustainability={handleOpenSustainability}
         onNavigateLogin={handleNavigateLogin}
         onNavigateSignup={handleNavigateSignup}
         onOpenAuth={() => setIsAuthModalOpen(true)}
       />
       <ErrorBoundary fallbackView={handleNavigateHome}>
         {activeView === 'home' && (
-          <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
+          <DiagnosePage
+            onOpenCropRecommendation={handleOpenCropRecommendation}
+            onOpenSustainabilityScore={handleOpenSustainability}
+          />
         )}
         {activeView === 'crop-recommendation' && (
-          <CropRecommendationPage onBack={handleNavigateHome} />
+          <CropRecommendationPage
+            onBack={handleNavigateHome}
+            onNavigateSustainability={handleOpenSustainability}
+          />
+        )}
+        {activeView === 'sustainability' && (
+          <SustainabilityScorePage
+            onBack={handleNavigateHome}
+            onNavigateCropRecommendation={handleOpenCropRecommendation}
+          />
         )}
         {activeView === 'login' && (
           <LoginPage
@@ -157,7 +172,6 @@ function AppShell() {
             onSuccess={handleReturnToPrevious}
           />
         )}
-
       </ErrorBoundary>
       <Footer />
       <AuthModal

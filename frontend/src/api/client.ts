@@ -7,6 +7,9 @@ import {
   ChatAnswer,
   ChatSessionResponse,
   ChatMessageResponse,
+  SustainabilityScoreRequest,
+  SustainabilityScoreResponse,
+  IoTPresetsResponse,
 } from '../types';
 
 export class ApiError extends Error {
@@ -19,8 +22,75 @@ export class ApiError extends Error {
   }
 }
 
+export function extractErrorMessage(
+  errorData: unknown,
+  status: number,
+  fallbackMessage: string
+): string {
+  if (status === 401) {
+    return 'Authentication required or session expired. Please sign in or continue as guest.';
+  }
+  if (status === 429) {
+    return 'Too many requests. Please wait a moment and try again.';
+  }
+
+  let message = '';
+  if (typeof errorData === 'object' && errorData !== null) {
+    const data = errorData as Record<string, unknown>;
+    if (typeof data.detail === 'string' && data.detail.trim()) {
+      message = data.detail.trim();
+    } else if (Array.isArray(data.detail)) {
+      const msgs = data.detail
+        .map((item) => {
+          if (typeof item === 'string') return item.trim();
+          if (typeof item === 'object' && item !== null) {
+            const d = item as Record<string, unknown>;
+            if (typeof d.msg === 'string') return d.msg.trim();
+            if (typeof d.message === 'string') return d.message.trim();
+          }
+          return '';
+        })
+        .filter(Boolean);
+      if (msgs.length > 0) {
+        message = msgs.join('. ');
+      }
+    } else if (typeof data.message === 'string' && data.message.trim()) {
+      message = data.message.trim();
+    }
+  } else if (typeof errorData === 'string' && errorData.trim()) {
+    message = errorData.trim();
+  }
+
+  if (message) {
+    if (message.includes('[object Object]')) {
+      return fallbackMessage;
+    }
+    const sanitized = message
+      .replace(/(Bearer\s+)[A-Za-z0-9-_=.]+/gi, '$1[REDACTED]')
+      .replace(/(password|secret|key|token)[=:]\s*[^\s,]+/gi, '$1=[REDACTED]')
+      .replace(/Traceback \(most recent call last\):[\s\S]*/gi, '')
+      .trim();
+    return sanitized || fallbackMessage;
+  }
+
+  if (status === 503) {
+    return 'Service is temporarily unavailable. Please verify the backend is running and try again.';
+  }
+  if (status >= 500) {
+    return 'Backend server is unreachable or encountered an error. Please verify the backend is running on port 8000.';
+  }
+
+  return fallbackMessage;
+}
+
 export async function checkHealth(): Promise<HealthResponse> {
-  const res = await fetch('/health');
+  let res: Response;
+  try {
+    res = await fetch('/health');
+  } catch {
+    throw new ApiError(0, 'Unable to connect to server. Please check your network connection.');
+  }
+
   if (!res.ok) {
     throw new ApiError(res.status, `Health check failed with status: ${res.status}`);
   }
@@ -31,15 +101,20 @@ export async function predictDisease(file: File): Promise<PredictionResponse> {
   const formData = new FormData();
   formData.append('image', file);
 
-  // Browser automatically sets Content-Type to multipart/form-data with boundary
-  const res = await fetch('/api/predictions', {
-    method: 'POST',
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/predictions', {
+      method: 'POST',
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the diagnostic server. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Prediction failed with status: ${res.status}`);
+    const message = extractErrorMessage(errorData, res.status, `Prediction failed with status: ${res.status}`);
+    throw new ApiError(res.status, message);
   }
 
   return res.json();
@@ -48,26 +123,22 @@ export async function predictDisease(file: File): Promise<PredictionResponse> {
 export async function recommendCrop(
   data: CropRecommendationRequest
 ): Promise<CropRecommendationResponse> {
-  const res = await fetch('/api/crop-recommendations', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/crop-recommendations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the recommendation server. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    let message = 'Failed to get crop recommendation';
-    if (typeof errorData?.detail === 'string') {
-      message = errorData.detail;
-    } else if (Array.isArray(errorData?.detail)) {
-      message = errorData.detail
-        .map((d: { msg?: string }) => d.msg || JSON.stringify(d))
-        .join('; ');
-    } else if (res.statusText) {
-      message = `${res.statusText} (${res.status})`;
-    }
+    const message = extractErrorMessage(errorData, res.status, 'Failed to get crop recommendation');
     throw new ApiError(res.status, message);
   }
 
@@ -77,7 +148,6 @@ export async function recommendCrop(
 export const recommendCrops = recommendCrop;
 
 export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
-  // Validate question length between 1 and 500 characters
   const trimmedQuestion = data.question ? data.question.trim() : '';
   if (!trimmedQuestion || trimmedQuestion.length > 500) {
     throw new ApiError(400, 'Question must be between 1 and 500 characters.');
@@ -96,26 +166,27 @@ export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
     // Gracefully ignore in non-browser/restricted environments
   }
 
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      ...data,
-      question: trimmedQuestion,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/chat', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...data,
+        question: trimmedQuestion,
+      }),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the AI assistant. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    let message = 'Failed to get advice from Agro AI';
-    if (typeof errorData?.detail === 'string') {
-      message = errorData.detail;
-    } else if (res.status === 401) {
-      message = 'Your session has expired. Please sign in again or continue as guest.';
-    } else if (res.status === 400 || res.status === 422) {
-      message = 'Please provide a valid question for the AI assistant (1–500 characters).';
-    } else if (res.status === 503) {
-      message = 'Agro AI Assistant is temporarily unavailable. Please try again in a moment.';
+    let message = extractErrorMessage(errorData, res.status, 'Failed to get advice from Agro AI');
+    if (res.status === 400 || res.status === 422) {
+      message = typeof errorData?.detail === 'string' && errorData.detail
+        ? errorData.detail
+        : 'Please provide a valid question for the AI assistant (1–500 characters).';
     }
     throw new ApiError(res.status, message);
   }
@@ -126,34 +197,51 @@ export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
 import { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '../types/auth';
 
 export async function registerUser(data: RegisterRequest): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the authentication server. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Registration failed with status: ${res.status}`);
+    const message = extractErrorMessage(errorData, res.status, `Registration failed with status: ${res.status}`);
+    throw new ApiError(res.status, message);
   }
 
   return res.json();
 }
 
 export async function loginUser(data: LoginRequest): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the authentication server. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Login failed with status: ${res.status}`);
+    let message = extractErrorMessage(errorData, res.status, `Login failed with status: ${res.status}`);
+    if (res.status === 401) {
+      message = typeof errorData?.detail === 'string' && errorData.detail
+        ? errorData.detail
+        : 'Incorrect email or password.';
+    }
+    throw new ApiError(res.status, message);
   }
 
   return res.json();
@@ -166,14 +254,20 @@ export async function getAuthMe(): Promise<AuthUser> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch('/api/auth/me', {
-    method: 'GET',
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/me', {
+      method: 'GET',
+      headers,
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the server. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Session validation failed with status: ${res.status}`);
+    const message = extractErrorMessage(errorData, res.status, `Session validation failed with status: ${res.status}`);
+    throw new ApiError(res.status, message);
   }
 
   return res.json();
@@ -186,14 +280,20 @@ export async function getChatSessions(): Promise<ChatSessionResponse[]> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch('/api/chat/sessions', {
-    method: 'GET',
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/chat/sessions', {
+      method: 'GET',
+      headers,
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the chat service. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Failed to fetch chat sessions with status: ${res.status}`);
+    const message = extractErrorMessage(errorData, res.status, `Failed to fetch chat sessions with status: ${res.status}`);
+    throw new ApiError(res.status, message);
   }
 
   return res.json();
@@ -207,14 +307,64 @@ export async function getChatSessionMessages(sessionId: string): Promise<ChatMes
   }
 
   const encodedId = encodeURIComponent(sessionId);
-  const res = await fetch(`/api/chat/sessions/${encodedId}/messages`, {
-    method: 'GET',
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/chat/sessions/${encodedId}/messages`, {
+      method: 'GET',
+      headers,
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the chat service. Please check your network connection.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, errorData.detail || `Failed to fetch session messages with status: ${res.status}`);
+    const message = extractErrorMessage(errorData, res.status, `Failed to fetch session messages with status: ${res.status}`);
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
+export async function calculateSustainabilityScore(
+  data: SustainabilityScoreRequest
+): Promise<SustainabilityScoreResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/sustainability-score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the sustainability service. Please check your network connection.');
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = extractErrorMessage(errorData, res.status, 'Failed to calculate sustainability score');
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
+export async function getIoTPresets(): Promise<IoTPresetsResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/sustainability/iot-telemetry', {
+      method: 'GET',
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the IoT telemetry service. Please check your network connection.');
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = extractErrorMessage(errorData, res.status, 'Failed to fetch IoT telemetry presets');
+    throw new ApiError(res.status, message);
   }
 
   return res.json();

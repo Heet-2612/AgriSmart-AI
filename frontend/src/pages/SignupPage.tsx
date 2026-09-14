@@ -8,7 +8,7 @@ export interface SignupPageProps {
   onSuccess?: () => void;
 }
 
-export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPageProps) {
+export function SignupPage({ onBack, onNavigateLogin, onSuccess: _onSuccess }: SignupPageProps) {
   const { register } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,13 +17,22 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await register({ email, password });
       onNavigateLogin();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed. Please check your credentials.';
+      let msg = 'Registration failed. Please check your credentials.';
+      if (err instanceof Error && err.message && !err.message.includes('[object Object]')) {
+        msg = err.message;
+      }
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -88,7 +97,7 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="farmer@example.com"
+                placeholder="farmer@gmail.com"
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
@@ -109,6 +118,7 @@ export function SignupPage({ onBack, onNavigateLogin, onSuccess }: SignupPagePro
                 id="signup-password"
                 type="password"
                 required
+                minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

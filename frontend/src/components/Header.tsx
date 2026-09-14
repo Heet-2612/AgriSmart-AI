@@ -3,9 +3,10 @@ import { Leaf, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
-  activeView?: 'home' | 'crop-recommendation' | 'login' | 'signup';
+  activeView?: 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
   onNavigateHome?: () => void;
   onNavigateCropRecommendation?: () => void;
+  onNavigateSustainability?: () => void;
   onNavigateLogin?: () => void;
   onNavigateSignup?: () => void;
   onOpenAuth?: () => void;
@@ -15,6 +16,7 @@ export function Header({
   activeView = 'home',
   onNavigateHome,
   onNavigateCropRecommendation,
+  onNavigateSustainability: _onNavigateSustainability,
   onNavigateLogin,
   onNavigateSignup,
   onOpenAuth,
@@ -114,7 +116,7 @@ export function Header({
               }}
               aria-label="Farm Insight — Crop Recommendation"
               className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
-                activeView === 'crop-recommendation'
+                activeView === 'crop-recommendation' || activeView === 'sustainability'
                   ? 'bg-[#ECFDF5] text-[#059669]'
                   : 'text-[#475569] hover:bg-[#ECFDF5] hover:text-[#059669]'
               }`}
@@ -156,11 +158,11 @@ export function Header({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                {/* Secondary Action: Login */}
+                {/* Action: Login */}
                 <button
                   type="button"
                   onClick={handleLoginClick}
-                  className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
+                  className="rounded-full border border-emerald-600 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-700 transition-colors cursor-pointer"
                   aria-label="Login"
                 >
                   Login
@@ -238,7 +240,7 @@ export function Header({
               }}
               aria-label="Farm Insight — Crop Recommendation"
               className={`block w-full text-left rounded-lg px-3 py-2 text-base font-medium cursor-pointer transition-colors ${
-                activeView === 'crop-recommendation' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
+                activeView === 'crop-recommendation' || activeView === 'sustainability' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
               }`}
             >
               Farm Insight
@@ -302,7 +304,7 @@ export function Header({
                       setMobileMenuOpen(false);
                       handleLoginClick();
                     }}
-                    className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                    className="flex w-full items-center justify-center rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer"
                     aria-label="Login"
                   >
                     Login

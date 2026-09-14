@@ -105,9 +105,14 @@ function formatFileSize(bytes: number): string {
 interface DiagnosePageProps {
   initialResult?: PredictionResponse | null;
   onOpenCropRecommendation?: () => void;
+  onOpenSustainabilityScore?: () => void;
 }
 
-export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }: DiagnosePageProps) {
+export function DiagnosePage({
+  initialResult = null,
+  onOpenCropRecommendation,
+  onOpenSustainabilityScore,
+}: DiagnosePageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropType, setCropType] = useState<string>('');
@@ -630,7 +635,10 @@ export function DiagnosePage({ initialResult = null, onOpenCropRecommendation }:
       </section>
 
       {/* ── Bonus Features Section ── */}
-      <BonusFeaturesSection onSelectCropRecommendation={onOpenCropRecommendation} />
+      <BonusFeaturesSection
+        onSelectCropRecommendation={onOpenCropRecommendation}
+        onSelectSustainabilityScore={onOpenSustainabilityScore}
+      />
 
       {/* ── Supported Crops Gallery (Matching Reference Design) ── */}
       <section
