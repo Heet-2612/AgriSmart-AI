@@ -18,7 +18,10 @@ class PredictionOutput:
     roi_count: Optional[int] = None
     fallback_used: Optional[bool] = None
     is_conclusive: Optional[bool] = True
-    status: Optional[str] = "confident" 
+    status: Optional[str] = "confident"
+    rejection_reason: Optional[str] = None
+    crop_class: Optional[str] = None
+    crop_confidence: Optional[float] = None
 
 
 @runtime_checkable
@@ -49,6 +52,9 @@ def normalize_prediction_output(raw_output: Any) -> PredictionOutput:
             fallback_used=raw_output.get("fallback_used"),
             is_conclusive=raw_output.get("is_conclusive", True),
             status=raw_output.get("status", "confident"),
+            rejection_reason=raw_output.get("rejection_reason"),
+            crop_class=raw_output.get("crop_class"),
+            crop_confidence=raw_output.get("crop_confidence"),
         )
     raise ValueError(f"Unsupported predictor output format: {type(raw_output)}")
 

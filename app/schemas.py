@@ -19,11 +19,15 @@ class PredictionResponse(BaseModel):
     fallback_used: Optional[bool] = None
     is_conclusive: Optional[bool] = True
     status: Optional[str] = "confident"
+    rejection_reason: Optional[str] = None
+    crop_class: Optional[str] = None
+    crop_confidence: Optional[float] = None
 
 class ErrorResponse(BaseModel):
     detail: str
     status: Optional[str] = None
     is_conclusive: Optional[bool] = None
+    rejection_reason: Optional[str] = None
 
 class CropRecommendationRequest(BaseModel):
     state: str

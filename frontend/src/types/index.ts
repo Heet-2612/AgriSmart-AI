@@ -12,10 +12,16 @@ export interface PredictionResponse {
   is_conclusive?: boolean;
   status?: string;
   leaf_detected?: boolean;
+  crop_class?: string;
+  crop_confidence?: number;
+  rejection_reason?: string;
 }
 
 export interface ApiError {
   detail: string;
+  status?: string;
+  is_conclusive?: boolean;
+  rejection_reason?: string;
 }
 
 export interface RankedCropRecommendation {

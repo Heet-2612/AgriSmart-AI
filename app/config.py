@@ -37,6 +37,15 @@ class Settings(BaseModel):
     MODEL_VERSION: str = Field(
         default_factory=lambda: os.getenv("MODEL_VERSION", "E11-SigLIP-HYBRID10-PRODUCTION")
     )
+    VALIDITY_CHECKPOINT_PATH: str = Field(
+        default_factory=lambda: os.getenv(
+            "VALIDITY_CHECKPOINT_PATH",
+            "experiments/e12_siglip_validity/validity_classifier_baseline.pt",
+        )
+    )
+    VALIDITY_MODEL_VERSION: str = Field(
+        default_factory=lambda: os.getenv("VALIDITY_MODEL_VERSION", "E12-SigLIP-Validity-Baseline")
+    )
     
     # GenAI Settings
     GEMINI_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))

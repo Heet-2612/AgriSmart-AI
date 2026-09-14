@@ -68,6 +68,22 @@ export function DiagnosisResult({
                   <CheckCircle2 size={13} aria-hidden="true" />
                   Diagnosis Output
                 </span>
+              ) : result.status === 'unsupported_crop' ? (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{ backgroundColor: '#E0E7FF', color: '#3730A3' }}
+                >
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  Unsupported Crop Species
+                </span>
+              ) : result.status === 'inconclusive_crop' ? (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                >
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  Inconclusive Crop
+                </span>
               ) : (
                 <span
                   className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
@@ -75,6 +91,13 @@ export function DiagnosisResult({
                 >
                   <AlertTriangle size={13} aria-hidden="true" />
                   Inconclusive Diagnosis
+                </span>
+              )}
+
+              {result.crop_class && result.crop_class !== 'Other' && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                  <Leaf size={12} aria-hidden="true" className="text-emerald-600" />
+                  Detected Crop: {result.crop_class}
                 </span>
               )}
 

@@ -250,7 +250,7 @@ def test_10_unsupported_plants_documented(plant_name, img_path):
 
     assert res.status_code == 200
     data = res.json()
-    assert data["status"] in ("confident", "inconclusive")
+    assert data["status"] in ("confident", "inconclusive", "unsupported_crop", "inconclusive_crop")
     assert isinstance(data["is_conclusive"], bool)
     # Record behavior for reporting: grape -> inconclusive; soybean/pepper/peach/strawberry -> confident
 

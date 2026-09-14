@@ -26,6 +26,12 @@ from app.services.disease_metadata_service import (
     DiseaseMetadataService,
     get_default_metadata_service,
 )
+from app.services.leaf_presence_gate import LeafPresenceGate, get_leaf_presence_gate
+from app.services.validity_classifier import (
+    ValidityClassifier,
+    get_validity_classifier,
+    ValidityResult,
+)
 from model.inference.predict import ModelNotReadyError
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
@@ -90,8 +96,10 @@ async def process_prediction(
     db: Optional[AsyncSession] = None,
     predictor: Optional[PredictorProtocol] = None,
     metadata_service: Optional[DiseaseMetadataService] = None,
+    leaf_gate: Optional[LeafPresenceGate] = None,
+    validity_service: Optional[ValidityClassifier] = None,
 ) -> PredictionResponse:
-    """Validate uploaded image, filter invalid inputs, invoke E11 predictor, gate uncertainty, and return response."""
+    """Validate uploaded image, filter invalid inputs, invoke E14 gate, E12 validity, and E11 disease predictor."""
     if not image.filename:
         raise InvalidImageError("No file selected or uploaded.", status="invalid_image")
 
@@ -143,10 +151,77 @@ async def process_prediction(
                     "with the verified HYBRID-10 training pool."
                 )
 
-        # Stage 1 ? Obvious Invalid Image Filter
+        # Stage 1 — Obvious Invalid Image Filter (basic entropy & contrast checks)
         check_image_statistics(temp_path, is_default_predictor=is_default)
 
-        # Stage 2 ? ML Inference Execution (Preserves exact E11 weights, preprocessing, and probabilities)
+        # Stage 2 — E14 Leaf / Vegetation Presence Gate
+        active_leaf_gate = leaf_gate if leaf_gate is not None else get_leaf_presence_gate()
+        try:
+            with Image.open(temp_path) as pil_img:
+                img_arr = np.array(pil_img.convert("RGB"))
+            is_leaf, gate_reason, telemetry = active_leaf_gate.evaluate(img_arr)
+        except Exception as e:
+            if is_default:
+                raise InvalidImageError(
+                    f"Uploaded file cannot be parsed as a valid image: {e}",
+                    status="invalid_image",
+                )
+            is_leaf, gate_reason = True, "ACCEPT_PLAUSIBLE_LEAF"
+
+        if not is_leaf:
+            # Rejection semantics: E14 is NOT an OOD detector and must NOT be described as one.
+            # If E14 rejects: DO NOT call E12. DO NOT call E11.
+            raise InvalidImageError(
+                f"The uploaded image does not appear to contain a plausible plant or leaf region ({gate_reason}). "
+                f"Please upload a clear, focused photo of an Apple, Corn, Potato, or Tomato leaf.",
+                status="not_leaf" if gate_reason != "INVALID_DEGENERATE_IMAGE" else "invalid_image",
+                rejection_reason=gate_reason,
+            )
+
+        # Stage 3 — E12 5-Way Crop Validity Classifier & Margin Policy
+        val_res: Optional[ValidityResult] = None
+        if is_default:
+            active_validity = validity_service if validity_service is not None else get_validity_classifier()
+            val_res = active_validity.evaluate(temp_path)
+
+            if not val_res.is_supported:
+                # E11 is NOT called for unsupported or inconclusive crops
+                if val_res.status == "unsupported_crop":
+                    return PredictionResponse(
+                        predicted_class="Unsupported Crop",
+                        confidence=val_res.confidence,
+                        model_version=val_res.model_version,
+                        display_name="Unsupported Crop Species",
+                        precaution="AgriSmart AI currently supports Apple, Corn, Potato, and Tomato foliage. This leaf appears to belong to an unsupported plant variety.",
+                        probabilities=val_res.probabilities,
+                        pipeline="E12-SigLIP-Validity-Gate",
+                        leaf_detected=True,
+                        roi_count=1,
+                        fallback_used=False,
+                        is_conclusive=False,
+                        status="unsupported_crop",
+                        crop_class="Other",
+                        crop_confidence=val_res.confidence,
+                    )
+                else:  # inconclusive_crop
+                    return PredictionResponse(
+                        predicted_class="Inconclusive Crop",
+                        confidence=val_res.confidence,
+                        model_version=val_res.model_version,
+                        display_name="Inconclusive Crop Identification",
+                        precaution="The crop species could not be identified with sufficient certainty. Please upload a clear photo of an Apple, Corn, Potato, or Tomato leaf.",
+                        probabilities=val_res.probabilities,
+                        pipeline="E12-SigLIP-Validity-Gate",
+                        leaf_detected=True,
+                        roi_count=1,
+                        fallback_used=False,
+                        is_conclusive=False,
+                        status="inconclusive_crop",
+                        crop_class=val_res.crop_class,
+                        crop_confidence=val_res.confidence,
+                    )
+
+        # Stage 4 — E11 Disease Classifier Execution (reached only for confirmed supported crops)
         try:
             raw_output = active_predictor.predict(temp_path)
             prediction_output = normalize_prediction_output(raw_output)
@@ -159,10 +234,7 @@ async def process_prediction(
         except Exception as e:
             raise InferenceError(f"Model inference failed: {str(e)}")
 
-        # Stage 3 ? Uncertainty Gate
-        # Computes top-1 confidence, top-2 confidence, and top-1/top-2 margin.
-        # NOTE: This gate is an uncertainty mechanism, NOT biological leaf/plant detection or OOD classification.
-        # leaf_detected is preserved for legacy backward compatibility and is never used as a proxy for confidence.
+        # Stage 5 — E11 Uncertainty Gate
         probabilities = prediction_output.probabilities or {}
         if probabilities:
             sorted_probs = sorted(probabilities.values(), reverse=True)
@@ -186,7 +258,7 @@ async def process_prediction(
             is_conclusive = True
             diagnosis_status = "confident"
 
-        # Backend metadata mapping
+        # Stage 6 — Backend metadata mapping & database persistence
         metadata = active_metadata_service.get_metadata(prediction_output.predicted_class)
 
         # Persist genuine prediction to database only after successful inference
@@ -220,6 +292,8 @@ async def process_prediction(
             fallback_used=prediction_output.fallback_used,
             is_conclusive=is_conclusive,
             status=diagnosis_status,
+            crop_class=val_res.crop_class if val_res else prediction_output.crop_class,
+            crop_confidence=val_res.confidence if val_res else prediction_output.crop_confidence,
         )
 
     finally:

@@ -12,10 +12,11 @@ class AppError(Exception):
 
 class InvalidImageError(AppError):
     """Raised when an uploaded image fails validation."""
-    def __init__(self, message: str, status: str = "invalid_image"):
+    def __init__(self, message: str, status: str = "invalid_image", rejection_reason: Optional[str] = None):
         super().__init__(message, status_code=http_status.HTTP_400_BAD_REQUEST)
         self.status = status
         self.is_conclusive = False
+        self.rejection_reason = rejection_reason
 
 
 class PayloadTooLargeError(AppError):
@@ -55,6 +56,8 @@ async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
         content["status"] = exc.status
     if hasattr(exc, "is_conclusive") and exc.is_conclusive is not None:
         content["is_conclusive"] = exc.is_conclusive
+    if hasattr(exc, "rejection_reason") and exc.rejection_reason is not None:
+        content["rejection_reason"] = exc.rejection_reason
     return JSONResponse(
         status_code=exc.status_code,
         content=content

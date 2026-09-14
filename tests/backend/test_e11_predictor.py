@@ -210,7 +210,9 @@ def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
     app.dependency_overrides[get_db_session] = override_get_db_session
     try:
         client = TestClient(app)
-        with open(sample_leaf_image, "rb") as f:
+        potato_sample = Path(r"C:\VScode\AgriSmart-AI-main\data\plantvillage_benchmark\val\Potato___Early_blight\04c8e6b9-7710-4cdd-b259-2d78b15d1036___RS_Early.B 7066.JPG")
+        test_img = potato_sample if potato_sample.exists() else sample_leaf_image
+        with open(test_img, "rb") as f:
             response = client.post(
                 "/api/predictions",
                 files={"image": ("leaf.jpg", f, "image/jpeg")},
