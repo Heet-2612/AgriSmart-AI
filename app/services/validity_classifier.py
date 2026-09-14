@@ -91,7 +91,7 @@ class ValidityClassifier:
                 f"E12 validity checkpoint not found at: '{self.checkpoint_path}'"
             )
 
-        ckpt = torch.load(self.checkpoint_path, map_location="cpu", weights_only=False)
+        ckpt = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
         self.class_names = list(ckpt.get("class_names", self.class_names))
 
         model = E12ValidityModel(num_classes=len(self.class_names))

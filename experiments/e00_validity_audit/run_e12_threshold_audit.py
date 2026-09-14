@@ -67,7 +67,7 @@ def main():
     for p in backbone.parameters():
         p.requires_grad = False
 
-    ckpt = torch.load(E12_CKPT_PATH, map_location=device)
+    ckpt = torch.load(E12_CKPT_PATH, map_location=device, weights_only=True)
     class_names = ckpt["class_names"]  # ['Potato', 'Corn', 'Tomato', 'Apple', 'Other']
     print(f"Loaded E12 classes:  {class_names}")
 
@@ -87,6 +87,45 @@ def main():
     assert len(df) == 58, f"Expected 58 audit images, found {len(df)}"
     print(f"Loaded locked manifest: {MANIFEST_PATH} ({len(df)} images)")
 
+    def resolve_audit_image_path(rel_path_str: str, root: Path) -> Path:
+        p = Path(rel_path_str)
+        if p.is_absolute() and p.exists():
+            return p
+        cand = root / p
+        if cand.exists():
+            return cand
+        for env_k in ("AGRISMART_DATA_ROOT", "TEST_IMAGE_ROOT", "DATA_DIR", "AUDIT_DATA_ROOT"):
+            val = os.getenv(env_k)
+            if val:
+                cand = Path(val) / p
+                if cand.exists():
+                    return cand
+                if str(p).startswith("data/") or str(p).startswith("data\\"):
+                    cand = Path(val) / Path(*p.parts[1:])
+                    if cand.exists():
+                        return cand
+        cand = root.parent / "AgriSmart-AI-main" / p
+        if cand.exists():
+            return cand
+        if "kagglehub" in str(p):
+            sub_idx = p.parts.index("kagglehub") + 1
+            sub_path = Path(*p.parts[sub_idx:])
+            cand = Path.home() / ".cache" / "kagglehub" / sub_path
+            if cand.exists():
+                return cand
+        if "ood_assets" in str(p):
+            fname = p.name
+            for search_cand in [
+                root.parent / "GlobeTrotter_Hackathon" / ".agents" / "skills" / "ponytail" / "assets" / fname,
+                root.parent / "GlobeTrotter_Hackathon" / "frontend" / "public" / "assets" / fname,
+                Path.home() / "Downloads" / fname,
+                Path("C:/Windows/Web/Wallpaper/ThemeA") / fname,
+                Path("C:/Windows/Web/Wallpaper/ThemeB") / fname,
+            ]:
+                if search_cand.exists():
+                    return search_cand
+        return root / p
+
     # 4. Run inference
     records = []
 
@@ -94,7 +133,7 @@ def main():
     # VALID_SUPPORTED_LEAF has target crop in description/source_category
     # VALID_UNSUPPORTED_LEAF, NOT_LEAF, DEGENERATE should be 'Other'
     for idx, row in df.iterrows():
-        p = Path(row["path"])
+        p = resolve_audit_image_path(row["path"], REPO_ROOT)
         cat = row["ground_truth_group"]
         desc = row["description"]
         src = row["source_category"]
