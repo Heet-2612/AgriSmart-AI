@@ -197,7 +197,7 @@ export function BonusFeaturesSection({
                 type="button"
                 variant="primary"
                 onClick={onSelectSustainabilityScore}
-                className="w-full sm:w-auto rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs gap-2 transition-all active:scale-[0.98]"
+                className="w-full sm:w-auto rounded-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs gap-2 transition-all active:scale-[0.98]"
                 aria-label="Open Sustainability Score — Calculate Score"
               >
                 <span>Open Sustainability Score</span>

@@ -61,7 +61,7 @@ export function Header({
   return (
     <header
       role="banner"
-      className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur-sm shadow-xs"
+      className="sticky top-0 z-50 border-b border-[#D4ECDC] bg-[#E8F8F0]/95 backdrop-blur-md shadow-2xs"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex h-18 items-center justify-between gap-4">
@@ -83,7 +83,7 @@ export function Header({
               style={{ backgroundColor: '#10B981' }}
               aria-hidden="true"
             >
-              <Leaf size={20} strokeWidth={2.4} color="#FFFFFF" />
+              <Leaf size={20} strokeWidth={2.4} color="#FFFFFF" className="animate-leaf-sway" />
             </span>
             <span className="text-xl font-bold tracking-tight text-[#0F172A]">
               AgriSmart <span style={{ color: '#10B981' }}>AI</span>
@@ -102,8 +102,8 @@ export function Header({
               }}
               className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors no-underline ${
                 activeView === 'home'
-                  ? 'bg-[#ECFDF5] text-[#059669]'
-                  : 'text-[#475569] hover:bg-[#ECFDF5] hover:text-[#059669]'
+                  ? 'bg-[#D7F3E3] text-[#047857]'
+                  : 'text-[#475569] hover:bg-[#D7F3E3] hover:text-[#047857]'
               }`}
             >
               Home
@@ -117,23 +117,23 @@ export function Header({
               aria-label="Farm Insight — Crop Recommendation"
               className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
                 activeView === 'crop-recommendation' || activeView === 'sustainability'
-                  ? 'bg-[#ECFDF5] text-[#059669]'
-                  : 'text-[#475569] hover:bg-[#ECFDF5] hover:text-[#059669]'
+                  ? 'bg-[#D7F3E3] text-[#047857]'
+                  : 'text-[#475569] hover:bg-[#D7F3E3] hover:text-[#047857]'
               }`}
             >
               Farm Insight
             </button>
             <a
-              href="#supported-crops"
-              onClick={(e) => handleLinkClick(e, '#supported-crops')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#ECFDF5] hover:text-[#059669] no-underline"
+              href="#model-info"
+              onClick={(e) => handleLinkClick(e, '#model-info')}
+              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#D7F3E3] hover:text-[#047857] no-underline"
             >
-              Supported Crops
+              Model Info
             </a>
             <a
               href="#how-it-works"
               onClick={(e) => handleLinkClick(e, '#how-it-works')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#ECFDF5] hover:text-[#059669] no-underline"
+              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#D7F3E3] hover:text-[#047857] no-underline"
             >
               How It Works
             </a>
@@ -246,14 +246,14 @@ export function Header({
               Farm Insight
             </button>
             <a
-              href="#supported-crops"
+              href="#model-info"
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleLinkClick(e, '#supported-crops');
+                handleLinkClick(e, '#model-info');
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669] transition-colors"
+              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#D7F3E3] hover:text-[#047857] transition-colors"
             >
-              Supported Crops
+              Model Info
             </a>
             <a
               href="#how-it-works"

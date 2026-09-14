@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <main className="flex-1 flex items-center justify-center p-8 text-center bg-slate-50">
+        <main className="flex-1 flex items-center justify-center p-8 text-center bg-[#FAF7EE]">
           <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Display Error Detected</h2>
             <p className="text-sm text-slate-600 mb-4">
@@ -68,7 +68,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 function Footer() {
   return (
     <footer
-      className="border-t border-slate-200/80 bg-white py-8"
+      className="border-t border-[#E5E0D0] bg-[#FAF7EE] py-8"
       role="contentinfo"
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
@@ -82,7 +82,7 @@ function Footer() {
                 style={{ backgroundColor: '#10B981' }}
                 aria-hidden="true"
               >
-                <Leaf size={16} strokeWidth={2.4} color="#FFFFFF" />
+                <Leaf size={16} strokeWidth={2.4} color="#FFFFFF" className="animate-leaf-sway" />
               </span>
               <span className="text-sm font-bold text-[#0F172A]">
                 AgriSmart <span style={{ color: '#10B981' }}>AI</span>
@@ -129,7 +129,7 @@ function AppShell() {
   };
 
   return (
-    <div id="app-shell" className="flex min-h-screen flex-col bg-white">
+    <div id="app-shell" className="flex min-h-screen flex-col bg-[#FAF7EE]">
       <Header
         activeView={activeView}
         onNavigateHome={handleNavigateHome}

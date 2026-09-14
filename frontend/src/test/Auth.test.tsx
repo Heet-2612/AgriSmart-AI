@@ -35,12 +35,16 @@ describe('Optional Authentication Foundation — Phase 1', () => {
     expect(screen.getByTestId('auth-user')).toHaveTextContent('null');
   });
 
-  it('renders Sign Up (primary) and Login (secondary) in the Header without Model Info link', () => {
+  it('renders Sign Up (primary), Login (secondary), and Model Info in the Header without Supported Crops link', () => {
     render(<App />);
 
-    // Model Info link removed from navigation
+    // Model Info link is now active in navigation
     const modelInfoLinks = screen.queryAllByRole('link', { name: /model info/i });
-    expect(modelInfoLinks).toHaveLength(0);
+    expect(modelInfoLinks.length).toBeGreaterThan(0);
+
+    // Supported crops link removed from navigation
+    const supportedCropsLinks = screen.queryAllByRole('link', { name: /supported crops/i });
+    expect(supportedCropsLinks).toHaveLength(0);
 
     // Primary action: Sign Up
     const signUpButton = screen.getByRole('button', { name: /^sign up$/i });
