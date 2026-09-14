@@ -104,27 +104,13 @@ def main():
                     cand = Path(val) / Path(*p.parts[1:])
                     if cand.exists():
                         return cand
-        cand = root.parent / "AgriSmart-AI-main" / p
-        if cand.exists():
-            return cand
-        if "kagglehub" in str(p):
-            sub_idx = p.parts.index("kagglehub") + 1
-            sub_path = Path(*p.parts[sub_idx:])
-            cand = Path.home() / ".cache" / "kagglehub" / sub_path
-            if cand.exists():
-                return cand
-        if "ood_assets" in str(p):
-            fname = p.name
-            for search_cand in [
-                root.parent / "GlobeTrotter_Hackathon" / ".agents" / "skills" / "ponytail" / "assets" / fname,
-                root.parent / "GlobeTrotter_Hackathon" / "frontend" / "public" / "assets" / fname,
-                Path.home() / "Downloads" / fname,
-                Path("C:/Windows/Web/Wallpaper/ThemeA") / fname,
-                Path("C:/Windows/Web/Wallpaper/ThemeB") / fname,
-            ]:
-                if search_cand.exists():
-                    return search_cand
-        return root / p
+        target = root / p
+        if not target.exists():
+            raise FileNotFoundError(
+                f"Audit asset could not be resolved at '{target}' or via configured environment variables."
+            )
+        return target
+
 
     # 4. Run inference
     records = []
