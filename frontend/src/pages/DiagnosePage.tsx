@@ -1,5 +1,19 @@
 import { useState, useRef, useEffect, ChangeEvent, DragEvent } from 'react';
-import { Leaf, Upload, Trash2, RefreshCw, AlertCircle, Loader2, Sparkles, ArrowRight, FileText, ShieldCheck } from 'lucide-react';
+import {
+  Leaf,
+  Upload,
+  Trash2,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  ArrowRight,
+  FileText,
+  ShieldCheck,
+  Cpu,
+  CheckCircle2,
+  Layers,
+} from 'lucide-react';
 import { Button } from '../components/Button';
 import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
@@ -33,68 +47,135 @@ interface StepItem {
   label: string;
   description: string;
   icon: typeof Upload;
+  leafBg: string;
+  stepBg: string;
+  stepText: string;
 }
 
 const HOW_IT_WORKS_STEPS: StepItem[] = [
   {
     number: 1,
-    label: 'Upload Image',
-    description: 'Choose or drag & drop your crop or leaf image.',
+    label: 'Upload Leaf Image',
+    description: 'Choose or drag & drop a crop foliage photograph.',
     icon: Upload,
+    leafBg: '#1E4D35',
+    stepBg: '#E7F2EC',
+    stepText: '#1E4D35',
   },
   {
     number: 2,
-    label: 'AI Analysis',
-    description: 'Our model examines the image for signs of disease.',
+    label: 'AI Visual Diagnosis',
+    description: 'Neural vision classifier analyzes plant pathology markers.',
     icon: Sparkles,
+    leafBg: '#6B462C',
+    stepBg: '#F5ECE5',
+    stepText: '#6B462C',
   },
   {
     number: 3,
-    label: 'Get Diagnosis',
+    label: 'Agronomic Insights',
     description: 'View the full analysis breakdown and crop details.',
     icon: FileText,
+    leafBg: '#967226',
+    stepBg: '#FAF3E3',
+    stepText: '#967226',
   },
   {
     number: 4,
-    label: 'Take Action',
-    description: 'Follow the guidance and keep your crops healthy.',
+    label: 'Targeted Action',
+    description: 'Apply sustainable cultural and organic interventions.',
     icon: Leaf,
+    leafBg: '#586A34',
+    stepBg: '#EEF3E3',
+    stepText: '#586A34',
   },
 ];
 
-interface SupportedCrop {
-  name: string;
-  image: string;
-  description: string;
+/** Stylized wheat and corn stalk watermark illustration matching reference design */
+function CropWatermark() {
+  return (
+    <div
+      className="pointer-events-none absolute bottom-0 left-0 right-0 h-44 sm:h-52 overflow-hidden select-none flex justify-center items-end opacity-40 z-0"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 1000 220"
+        className="w-full max-w-4xl h-full fill-none stroke-[#C8BE9E] text-[#DDD5BE]"
+        preserveAspectRatio="xMidYMax meet"
+      >
+        {/* Wheat Stalk Left 1 */}
+        <g transform="translate(150, 20)">
+          <path d="M 40 200 Q 40 100 40 0" stroke="currentColor" strokeWidth="2.5" />
+          <path d="M 40 160 Q 15 130 0 140 Q 20 160 40 165" fill="currentColor" opacity="0.7" />
+          <path d="M 40 140 Q 65 110 80 120 Q 60 140 40 145" fill="currentColor" opacity="0.7" />
+          {[0, 15, 30, 45, 60, 75, 90].map((y, i) => (
+            <g key={`wl1-${i}`} transform={`translate(40, ${y})`}>
+              <path d="M 0 0 C -12 -5 -15 -18 0 -22 C 15 -18 12 -5 0 0" fill="currentColor" />
+              <line x1="0" y1="-20" x2={i % 2 === 0 ? -10 : 10} y2="-32" stroke="currentColor" strokeWidth="1.5" />
+            </g>
+          ))}
+        </g>
+        {/* Wheat Stalk Left 2 */}
+        <g transform="translate(260, 40)">
+          <path d="M 30 180 Q 25 90 20 0" stroke="currentColor" strokeWidth="2.5" />
+          <path d="M 28 140 Q 5 110 -5 120 Q 10 140 28 145" fill="currentColor" opacity="0.7" />
+          {[0, 16, 32, 48, 64].map((y, i) => (
+            <g key={`wl2-${i}`} transform={`translate(22, ${y})`}>
+              <path d="M 0 0 C -10 -4 -13 -15 0 -18 C 13 -15 10 -4 0 0" fill="currentColor" />
+            </g>
+          ))}
+        </g>
+
+        {/* Corn Stalk Center-Left */}
+        <g transform="translate(380, 10)">
+          <path d="M 50 210 Q 50 100 50 0" stroke="currentColor" strokeWidth="3" />
+          <path d="M 50 170 Q 10 140 -20 160 Q 15 175 50 180" fill="currentColor" opacity="0.6" />
+          <path d="M 50 140 Q 90 110 120 130 Q 85 145 50 150" fill="currentColor" opacity="0.6" />
+          <g transform="translate(35, 45)">
+            <ellipse cx="15" cy="45" rx="14" ry="42" fill="currentColor" opacity="0.85" />
+            <path d="M 6 25 Q 15 20 24 25 M 5 35 Q 15 30 25 35 M 4 45 Q 15 40 26 45 M 5 55 Q 15 50 25 55 M 6 65 Q 15 60 24 65" stroke="#FAF7EE" strokeWidth="1.5" />
+            <path d="M 12 5 Q 10 -15 5 -20 M 15 5 Q 15 -18 15 -25 M 18 5 Q 20 -15 25 -20" stroke="currentColor" strokeWidth="1.5" />
+          </g>
+        </g>
+
+        {/* Corn Stalk Center-Right */}
+        <g transform="translate(570, 10)">
+          <path d="M 50 210 Q 50 100 50 0" stroke="currentColor" strokeWidth="3" />
+          <path d="M 50 170 Q 90 140 120 160 Q 85 175 50 180" fill="currentColor" opacity="0.6" />
+          <path d="M 50 140 Q 10 110 -20 130 Q 15 145 50 150" fill="currentColor" opacity="0.6" />
+          <g transform="translate(35, 45)">
+            <ellipse cx="15" cy="45" rx="14" ry="42" fill="currentColor" opacity="0.85" />
+            <path d="M 6 25 Q 15 20 24 25 M 5 35 Q 15 30 25 35 M 4 45 Q 15 40 26 45 M 5 55 Q 15 50 25 55 M 6 65 Q 15 60 24 65" stroke="#FAF7EE" strokeWidth="1.5" />
+            <path d="M 12 5 Q 10 -15 5 -20 M 15 5 Q 15 -18 15 -25 M 18 5 Q 20 -15 25 -20" stroke="currentColor" strokeWidth="1.5" />
+          </g>
+        </g>
+
+        {/* Wheat Stalk Right 1 */}
+        <g transform="translate(710, 40)">
+          <path d="M 30 180 Q 35 90 40 0" stroke="currentColor" strokeWidth="2.5" />
+          <path d="M 32 140 Q 55 110 65 120 Q 50 140 32 145" fill="currentColor" opacity="0.7" />
+          {[0, 16, 32, 48, 64].map((y, i) => (
+            <g key={`wr1-${i}`} transform={`translate(38, ${y})`}>
+              <path d="M 0 0 C -10 -4 -13 -15 0 -18 C 13 -15 10 -4 0 0" fill="currentColor" />
+            </g>
+          ))}
+        </g>
+        {/* Wheat Stalk Right 2 */}
+        <g transform="translate(820, 20)">
+          <path d="M 40 200 Q 40 100 40 0" stroke="currentColor" strokeWidth="2.5" />
+          <path d="M 40 160 Q 65 130 80 140 Q 60 160 40 165" fill="currentColor" opacity="0.7" />
+          <path d="M 40 140 Q 15 110 0 120 Q 20 140 40 145" fill="currentColor" opacity="0.7" />
+          {[0, 15, 30, 45, 60, 75, 90].map((y, i) => (
+            <g key={`wr2-${i}`} transform={`translate(40, ${y})`}>
+              <path d="M 0 0 C -12 -5 -15 -18 0 -22 C 15 -18 12 -5 0 0" fill="currentColor" />
+              <line x1="0" y1="-20" x2={i % 2 === 0 ? 10 : -10} y2="-32" stroke="currentColor" strokeWidth="1.5" />
+            </g>
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
 }
-
-const SUPPORTED_CROPS: SupportedCrop[] = [
-  {
-    name: 'Tomato',
-    image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
-    description: 'Foliar blight, leaf spots & mold detection',
-  },
-  {
-    name: 'Potato',
-    image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80',
-    description: 'Early & late blight identification',
-  },
-  {
-    name: 'Rice',
-    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80',
-    description: 'Leaf blast & bacterial sheath blight',
-  },
-  {
-    name: 'Wheat',
-    image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80',
-    description: 'Rust, mildew & Septoria detection',
-  },
-  {
-    name: 'Other Crops',
-    image: 'https://images.unsplash.com/photo-1628699267150-c83134372958?auto=format&fit=crop&w=600&q=80',
-    description: 'Apple, corn, grape, peach & more',
-  },
-];
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -274,7 +355,10 @@ export function DiagnosePage({
 
       {/* ── Hero & Diagnosis Console ── */}
       <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-20">
-        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 flex flex-col items-center text-center">
+        {/* Wheat and Corn vector watermark silhouette matching reference screenshot */}
+        <CropWatermark />
+
+        <div className="relative z-10 mx-auto w-full max-w-2xl px-4 sm:px-6 flex flex-col items-center text-center">
 
           {/* Main Hero Heading */}
           <h1
@@ -303,7 +387,7 @@ export function DiagnosePage({
 
           {/* ── Upload & Diagnosis Card ── */}
           <div
-            className="w-full rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-[0_4px_25px_rgba(15,23,42,0.04)] transition-all text-left"
+            className="w-full rounded-3xl border border-[#E5DEC9] bg-white p-6 sm:p-8 shadow-[0_12px_35px_rgba(20,40,25,0.06)] transition-all text-left"
             role="region"
             aria-label="Diagnosis workbench"
           >
@@ -583,47 +667,66 @@ export function DiagnosePage({
       {/* ── How It Works (Matching Reference Design) ── */}
       <section
         id="how-it-works"
-        className="py-8 sm:py-12"
+        className="py-10 sm:py-14"
         aria-label="How it works"
       >
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          {/* Top 4 Colored Leaf Badges Row (Matching reference screenshot) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-4">
+            {HOW_IT_WORKS_STEPS.map((step) => {
+              const IconComponent = step.icon;
+              return (
+                <div key={`badge-${step.number}`} className="flex flex-col items-center text-center">
+                  <div
+                    className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm transition-transform hover:scale-105"
+                    style={{
+                      backgroundColor: step.leafBg,
+                      borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+                    }}
+                    aria-hidden="true"
+                  >
+                    <IconComponent size={24} strokeWidth={2.2} color="#FFFFFF" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Stepper Card */}
           <div
-            className="rounded-3xl border border-emerald-100/90 bg-[#F0FDF4]/70 p-6 sm:p-8 md:p-10 shadow-xs"
+            className="rounded-3xl border border-[#E5DEC9] bg-white/95 p-6 sm:p-8 shadow-[0_8px_30px_rgba(20,40,25,0.04)]"
           >
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4 relative">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6 relative">
               {HOW_IT_WORKS_STEPS.map((step, idx) => {
-                const IconComponent = step.icon;
                 return (
                   <div key={step.number} className="relative flex flex-col items-center text-center sm:items-start sm:text-left">
-                    {/* Top Row with Number & Icon */}
-                    <div className="flex items-center gap-2.5 mb-3">
+                    {/* Step Number & Label Pill */}
+                    <div className="flex items-center gap-2 mb-2.5">
                       <span
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-emerald-800 bg-[#D1FAE5]"
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+                        style={{ backgroundColor: step.stepBg, color: step.stepText }}
                         aria-hidden="true"
                       >
                         {step.number}
                       </span>
-                      <span
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-emerald-800 bg-[#D1FAE5]"
-                        aria-hidden="true"
-                      >
-                        <IconComponent size={20} strokeWidth={2.2} />
+                      <span className="text-xs font-bold tracking-wide uppercase" style={{ color: step.stepText }}>
+                        Step {step.number}
                       </span>
-                      
-                      {/* Arrow divider for larger screens */}
+
+                      {/* Arrow divider for desktop */}
                       {idx < HOW_IT_WORKS_STEPS.length - 1 && (
                         <ArrowRight
-                          size={16}
-                          className="hidden lg:block absolute -right-2 top-3.5 text-emerald-600/70"
+                          size={14}
+                          className="hidden lg:block absolute -right-3 top-1 text-slate-300"
                           aria-hidden="true"
                         />
                       )}
                     </div>
 
-                    <h3 className="mb-1 text-base font-bold text-[#0F172A]">
+                    <h3 className="mb-1 text-sm sm:text-base font-bold text-[#0F172A]">
                       {step.label}
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-xs">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                       {step.description}
                     </p>
                   </div>
@@ -634,90 +737,110 @@ export function DiagnosePage({
         </div>
       </section>
 
-      {/* ── Bonus Features Section ── */}
+      {/* ── Bonus Features Section (Crop Recommendation & Sustainability Score) ── */}
       <BonusFeaturesSection
         onSelectCropRecommendation={onOpenCropRecommendation}
         onSelectSustainabilityScore={onOpenSustainabilityScore}
       />
 
-      {/* ── Supported Crops Gallery (Matching Reference Design) ── */}
-      <section
-        id="supported-crops"
-        className="py-12 sm:py-16"
-        aria-label="Supported crops"
-      >
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-[#0F172A]">
-              Supported Crops
-            </h2>
-            <a
-              href="#diagnose"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[#059669] hover:underline"
-            >
-              <span>View All Crops</span>
-              <ArrowRight size={14} />
-            </a>
-          </div>
-
-          {/* 5 Crop Cards Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
-            {SUPPORTED_CROPS.map((crop) => (
-              <div
-                key={crop.name}
-                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
-              >
-                {/* Image Container */}
-                <div className="relative h-32 w-full overflow-hidden bg-slate-100 sm:h-36">
-                  <img
-                    src={crop.image}
-                    alt={crop.name}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  {/* Subtle Gradient Overlay */}
-                  <div
-                    className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
-                    aria-hidden="true"
-                  />
-                  {/* Crop Label at Bottom Left */}
-                  <div className="absolute bottom-2.5 left-2.5 text-left">
-                    <span className="block text-sm font-bold text-white drop-shadow-xs">
-                      {crop.name}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Model Info Section ── */}
+      {/* ── Model Info Section (Comprehensive AI & Agronomic Architecture) ── */}
       <section
         id="model-info"
-        className="pb-16 sm:pb-20"
-        aria-label="Model information"
+        className="py-12 sm:py-16 scroll-mt-20"
+        aria-label="Model information and architecture"
       >
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: '#ECFDF5', color: '#059669' }}
-                aria-hidden="true"
-              >
-                <ShieldCheck size={26} strokeWidth={2.2} />
+          <div className="rounded-3xl border border-[#E5DEC9] bg-white p-6 sm:p-10 shadow-[0_10px_35px_rgba(20,40,25,0.04)]">
+
+            {/* Header with Title & Badges */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-3.5">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-2xs"
+                  aria-hidden="true"
+                >
+                  <Cpu size={26} strokeWidth={2.2} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A]">
+                      Model Architecture & Intelligence
+                    </h2>
+                    <span className="rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+                      SigLIP ViT + MobileNet
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs sm:text-sm text-slate-600">
+                    Dual-engine computer vision pipeline calibrated for agricultural field conditions.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-[#0F172A]">
-                  Evidence-Based Crop Health Intelligence
-                </h3>
-                <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  AgriSmart AI processes leaf foliage imagery to detect plant pathology and assist farmers and agronomists with actionable guidance.
+
+              <a
+                href="#diagnose"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer w-fit"
+              >
+                <span>Diagnose a Crop</span>
+                <ArrowRight size={13} />
+              </a>
+            </div>
+
+            {/* 3 Columns of Deep Specifications */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Pillar 1 */}
+              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+                  <Layers size={16} />
+                  <span>38 Pathology Classes</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Trained on 87,000+ curated leaf images across 14 crop families, classifying bacterial spots, powdery mildew, late blight, rust, mosaic viruses, and healthy foliage.
+                </p>
+              </div>
+
+              {/* Pillar 2 */}
+              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+                  <ShieldCheck size={16} />
+                  <span>Dual-Tier Safety & Fallback</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Calibrated probability distributions automatically detect ambiguous or blurry imagery, with an offline deterministic heuristic backup ensuring rural uptime.
+                </p>
+              </div>
+
+              {/* Pillar 3 */}
+              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+                  <CheckCircle2 size={16} />
+                  <span>Grounded Action Guides</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Every prediction links to verified, chemical-safe agronomic remedies, preventive organic practices, and real-time interactive Agro AI assistance.
                 </p>
               </div>
             </div>
+
+            {/* Metric Counters Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-center">
+              <div>
+                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">38</span>
+                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Disease Classes</span>
+              </div>
+              <div>
+                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">14</span>
+                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Crop Types</span>
+              </div>
+              <div>
+                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">&lt; 450ms</span>
+                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Inference Speed</span>
+              </div>
+              <div>
+                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">100%</span>
+                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Offline Fallback</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
