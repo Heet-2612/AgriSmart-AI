@@ -28,9 +28,11 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services.leaf_presence_gate import LeafPresenceGate, get_leaf_presence_gate
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.db.models.base import Base
 from app.services.validity_classifier import ValidityClassifier, get_validity_classifier
 from app.services.predictor_contract import PredictorProtocol, DefaultPredictor, PredictionOutput
-from app.dependencies import get_predictor, get_validity_service, get_leaf_gate
+from app.dependencies import get_predictor, get_validity_service, get_leaf_gate, get_db_session
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "samples"
@@ -99,6 +101,31 @@ def tempfile_saved(buf: io.BytesIO):
 @pytest.fixture
 def gate():
     return LeafPresenceGate()
+
+
+@pytest.fixture
+def test_db_session():
+    """Create an isolated in-memory SQLite async database session for tests."""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def init_db():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    import asyncio
+    asyncio.run(init_db())
+
+    async def override_get_db_session():
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    return override_get_db_session, session_factory, engine
 
 
 # ==============================================================================
@@ -208,19 +235,27 @@ def test_5_e14_rejection_short_circuits_downstream_e12_and_e11():
         mock_e11.assert_not_called()
 
 
-def test_6_e14_acceptance_proceeds_to_e12_and_e11():
+def test_6_e14_acceptance_proceeds_to_e12_and_e11(test_db_session):
     """When E14 accepts a supported crop leaf, E12 confirms crop, and E11 diagnoses disease."""
+    override_db, session_factory, engine = test_db_session
+    app.dependency_overrides[get_db_session] = override_db
+    
     client = TestClient(app)
     potato_path = FIXTURES_DIR / "potato_leaf.jpg"
 
-    with open(potato_path, "rb") as f:
-        res = client.post("/api/predictions", files={"image": ("potato.jpg", f, "image/jpeg")})
+    try:
+        with open(potato_path, "rb") as f:
+            res = client.post("/api/predictions", files={"image": ("potato.jpg", f, "image/jpeg")})
 
-    assert res.status_code == 200
-    data = res.json()
-    assert data["crop_class"] in ("Potato", "Other")
-    assert "predicted_class" in data
-    assert 0.0 <= data["confidence"] <= 1.0
+        assert res.status_code == 200
+        data = res.json()
+        assert data["crop_class"] in ("Potato", "Other")
+        assert "predicted_class" in data
+        assert 0.0 <= data["confidence"] <= 1.0
+    finally:
+        app.dependency_overrides.pop(get_db_session, None)
+        import asyncio
+        asyncio.run(engine.dispose())
 
 
 def test_7_e12_unsupported_crop_short_circuits_e11():
