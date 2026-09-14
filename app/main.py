@@ -11,10 +11,12 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.sustainability import router as sustainability_router
 from app.core.database import close_db_engine
 from app.core.errors import AppError, app_error_handler
+from model.inference.torch_config import configure_inference_backends
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_inference_backends()
     yield
     await close_db_engine()
 

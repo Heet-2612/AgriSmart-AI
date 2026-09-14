@@ -46,6 +46,9 @@ class Settings(BaseModel):
     VALIDITY_MODEL_VERSION: str = Field(
         default_factory=lambda: os.getenv("VALIDITY_MODEL_VERSION", "E12-SigLIP-Validity-Baseline")
     )
+    INFERENCE_DEVICE: str = Field(
+        default_factory=lambda: os.getenv("INFERENCE_DEVICE", "auto")
+    )
 
     # GenAI Settings
     GEMINI_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))

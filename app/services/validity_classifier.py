@@ -24,6 +24,7 @@ from PIL import Image
 
 from app.config import settings
 from model.inference.preprocessing import preprocess_image_tensor
+from model.inference.torch_config import resolve_inference_device, configure_inference_backends
 
 
 SUPPORTED_CROPS = {"Potato", "Corn", "Tomato", "Apple"}
@@ -66,7 +67,12 @@ class E12ValidityModel(nn.Module):
 class ValidityClassifier:
     """E12 Validity Classifier evaluating crop species before disease inference."""
 
-    def __init__(self, checkpoint_path: Optional[Union[str, Path]] = None):
+    def __init__(
+        self,
+        checkpoint_path: Optional[Union[str, Path]] = None,
+        device: Optional[Union[str, torch.device]] = None,
+    ):
+        configure_inference_backends()
         target_path = Path(checkpoint_path or settings.VALIDITY_CHECKPOINT_PATH)
         if not target_path.exists() or not target_path.is_file():
             repo_root = Path(__file__).resolve().parents[2]
@@ -79,7 +85,8 @@ class ValidityClassifier:
                     target_path = c
                     break
         self.checkpoint_path = target_path
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        dev_setting = device if device is not None else os.getenv("INFERENCE_DEVICE", getattr(settings, "INFERENCE_DEVICE", "auto"))
+        self.device = resolve_inference_device(dev_setting)
         self.model: Optional[E12ValidityModel] = None
         self.class_names: List[str] = ["Potato", "Corn", "Tomato", "Apple", "Other"]
         self.model_version: str = settings.VALIDITY_MODEL_VERSION
@@ -99,7 +106,8 @@ class ValidityClassifier:
         clean_sd = {k.replace("fc.", ""): v for k, v in raw_sd.items()}
         model.classifier.load_state_dict(clean_sd)
 
-        model.to(self.device)
+        # Enforce canonical float32 precision, move to selected device, and set eval mode
+        model.to(self.device).float()
         model.eval()
         for p in model.parameters():
             p.requires_grad = False
@@ -119,10 +127,10 @@ class ValidityClassifier:
         if not img_path.exists():
             raise FileNotFoundError(f"Image not found at {img_path}")
 
-        tensor = preprocess_image_tensor(img_path).to(self.device)
+        tensor = preprocess_image_tensor(img_path).to(device=self.device, dtype=torch.float32)
 
         with torch.inference_mode():
-            logits = self.model(tensor)
+            logits = self.model(tensor).float()
             probs = torch.softmax(logits, dim=-1).squeeze(0)
 
         probs_cpu = probs.cpu().numpy()
