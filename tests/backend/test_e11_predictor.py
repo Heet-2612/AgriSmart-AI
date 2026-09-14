@@ -179,6 +179,10 @@ def test_13_missing_checkpoint_produces_graceful_model_not_ready(sample_leaf_ima
 def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
     """Verify live POST /api/predictions endpoint executes end-to-end with E11 predictor."""
     client = TestClient(app)
+    from app.dependencies import get_db_session
+    from unittest.mock import AsyncMock
+    mock_db = AsyncMock()
+    app.dependency_overrides[get_db_session] = lambda: mock_db
     with open(sample_leaf_image, "rb") as f:
         response = client.post(
             "/api/predictions",
@@ -193,3 +197,4 @@ def test_14_end_to_end_api_prediction_with_e11(sample_leaf_image):
     assert len(body["probabilities"]) == 10
     assert body["display_name"] is not None
     assert body["model_version"] == "E11-SigLIP-HYBRID10-PRODUCTION"
+    app.dependency_overrides.clear()

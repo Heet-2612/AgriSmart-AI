@@ -7,6 +7,8 @@ from app.api.routes.predictions import router as predictions_router
 from app.api.routes.crop_recommendations import router as crop_recommendations_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.weather import router as weather_router
+from app.api.routes.auth import router as auth_router
+from app.api.routes.sustainability import router as sustainability_router
 from app.core.database import close_db_engine
 from app.core.errors import AppError, app_error_handler
 
@@ -51,3 +53,5 @@ app.include_router(crop_recommendations_router)
 app.include_router(chat_router)
 app.include_router(weather_router)
 
+app.include_router(auth_router)
+app.include_router(sustainability_router)

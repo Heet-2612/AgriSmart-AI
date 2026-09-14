@@ -41,15 +41,18 @@ def preprocess_image(image_input: Any, target_size: int = 224) -> Image.Image:
 
 def preprocess_image_tensor(image_input: Union[str, Path, Image.Image]) -> torch.Tensor:
     """Preprocess an image input into an E11 SigLIP batch tensor (1, 3, 224, 224)."""
-    if isinstance(image_input, (str, Path)):
-        p = Path(image_input)
-        if not p.exists() or not p.is_file():
-            raise FileNotFoundError(f"Image file not found at: {image_input}")
-        img = Image.open(p).convert("RGB")
-    elif isinstance(image_input, Image.Image):
-        img = image_input.convert("RGB")
-    else:
-        raise ValueError(f"Unsupported image input type: {type(image_input)}")
+    try:
+        if isinstance(image_input, (str, Path)):
+            p = Path(image_input)
+            if not p.exists() or not p.is_file():
+                raise FileNotFoundError(f"Image file not found at: {image_input}")
+            img = Image.open(p).convert("RGB")
+        elif isinstance(image_input, Image.Image):
+            img = image_input.convert("RGB")
+        else:
+            raise ValueError(f"Unsupported image input type: {type(image_input)}")
+    except (OSError, SyntaxError):
+        raise ValueError("Unsupported or corrupted image file. Please upload a valid crop photo (JPG, PNG, WEBP).")
 
     tensor = siglip_transform(img)
     return tensor.unsqueeze(0)

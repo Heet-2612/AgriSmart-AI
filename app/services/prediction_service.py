@@ -81,8 +81,12 @@ async def process_prediction(
             prediction_output = normalize_prediction_output(raw_output)
         except (ModelUnavailableError, ModelNotReadyError) as e:
             raise ModelUnavailableError(str(e))
-        except (InvalidImageError, ValueError, FileNotFoundError) as e:
-            raise InvalidImageError(str(e))
+        except (InvalidImageError, ValueError, FileNotFoundError, OSError) as e:
+            raise InvalidImageError(
+                str(e)
+                if isinstance(e, (InvalidImageError, ValueError))
+                else "Unsupported or invalid image file. Please upload a clear crop or leaf photo."
+            )
         except InferenceError:
             raise
         except Exception as e:

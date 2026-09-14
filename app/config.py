@@ -58,6 +58,13 @@ class Settings(BaseModel):
     WEATHER_REQUEST_TIMEOUT_SECONDS: float = Field(
         default_factory=lambda: float(os.getenv("WEATHER_REQUEST_TIMEOUT_SECONDS", "5.0"))
     )
+    # JWT Settings
+    JWT_SECRET_KEY: str = Field(
+        default_factory=lambda: os.environ["JWT_SECRET_KEY"]
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")))
+
+
 
 settings = Settings()
 

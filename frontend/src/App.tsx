@@ -3,6 +3,13 @@ import { Leaf } from 'lucide-react';
 import { Header } from './components/Header';
 import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
+import { SustainabilityScorePage } from './pages/SustainabilityScorePage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { AuthProvider } from './context/AuthContext';
+import { AuthModal } from './components/auth/AuthModal';
+
+export type AppView = 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -87,27 +94,37 @@ function Footer() {
             </span>
           </div>
 
-          {/* Hackathon metadata */}
-          <div className="text-xs text-slate-400">
-            © {new Date().getFullYear()} AgriSmart AI
-          </div>
-
         </div>
       </div>
     </footer>
   );
 }
 
-export default function App() {
-  const [activeView, setActiveView] = useState<'home' | 'crop-recommendation'>('home');
+function AppShell() {
+  const getInitialView = (): AppView => {
+    return 'home';
+  };
 
-  const handleNavigateHome = () => {
-    setActiveView('home');
+  const [activeView, setActiveView] = useState<AppView>(getInitialView);
+  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const navigateTo = (view: AppView) => {
+    if (activeView === 'home' || activeView === 'crop-recommendation' || activeView === 'sustainability') {
+      setPreviousView(activeView);
+    }
+    setActiveView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenCropRecommendation = () => {
-    setActiveView('crop-recommendation');
+  const handleNavigateHome = () => navigateTo('home');
+  const handleOpenCropRecommendation = () => navigateTo('crop-recommendation');
+  const handleOpenSustainability = () => navigateTo('sustainability');
+  const handleNavigateLogin = () => navigateTo('login');
+  const handleNavigateSignup = () => navigateTo('signup');
+
+  const handleReturnToPrevious = () => {
+    setActiveView(previousView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -116,16 +133,60 @@ export default function App() {
       <Header
         activeView={activeView}
         onNavigateHome={handleNavigateHome}
+        onNavigateCropRecommendation={handleOpenCropRecommendation}
+        onNavigateSustainability={handleOpenSustainability}
+        onNavigateLogin={handleNavigateLogin}
+        onNavigateSignup={handleNavigateSignup}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
       <ErrorBoundary fallbackView={handleNavigateHome}>
-        {activeView === 'home' ? (
-          <DiagnosePage onOpenCropRecommendation={handleOpenCropRecommendation} />
-        ) : (
-          <CropRecommendationPage onBack={handleNavigateHome} />
+        {activeView === 'home' && (
+          <DiagnosePage
+            onOpenCropRecommendation={handleOpenCropRecommendation}
+            onOpenSustainabilityScore={handleOpenSustainability}
+          />
+        )}
+        {activeView === 'crop-recommendation' && (
+          <CropRecommendationPage
+            onBack={handleNavigateHome}
+            onNavigateSustainability={handleOpenSustainability}
+          />
+        )}
+        {activeView === 'sustainability' && (
+          <SustainabilityScorePage
+            onBack={handleNavigateHome}
+            onNavigateCropRecommendation={handleOpenCropRecommendation}
+          />
+        )}
+        {activeView === 'login' && (
+          <LoginPage
+            onBack={handleReturnToPrevious}
+            onNavigateSignup={handleNavigateSignup}
+            onSuccess={handleReturnToPrevious}
+          />
+        )}
+        {activeView === 'signup' && (
+          <SignupPage
+            onBack={handleReturnToPrevious}
+            onNavigateLogin={handleNavigateLogin}
+            onSuccess={handleReturnToPrevious}
+          />
         )}
       </ErrorBoundary>
       <Footer />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 

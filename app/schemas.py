@@ -1,7 +1,39 @@
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, field_validator, ValidationInfo, EmailStr
 from datetime import datetime
 from uuid import UUID
+
+ALLOWED_EMAIL_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"}
+
+class UserRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        domain = v.split('@')[-1].lower()
+        if domain not in ALLOWED_EMAIL_DOMAINS:
+            raise ValueError("Email provider not supported")
+        if "." not in domain:
+            raise ValueError("Invalid email domain format")
+        return v
+
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 
 class HealthResponse(BaseModel):
     status: str = "ok"
@@ -104,6 +136,10 @@ class WeatherContext(BaseModel):
     humidity: Optional[float] = None
 
 
+class ChatHistoryMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str
+
 
 class ChatContext(BaseModel):
     predicted_class: str
@@ -119,6 +155,7 @@ class ChatContext(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     session_id: UUID
     language: Optional[str] = Field("en")
+    history: list[ChatHistoryMessage] = Field(default_factory=list)
 
     @field_validator("question")
     @classmethod
@@ -183,3 +220,98 @@ class ChatRequest(BaseModel):
         if v is not None and v not in ("en", "hi", "gu"):
             raise ValueError("unsupported language code")
         return v
+
+class ChatSessionResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+
+# ===================================# Simulated IoT Sensor Telemetry Schemas
+# ===================================
+class SensorTelemetry(BaseModel):
+    soil_moisture_percent: float = Field(..., ge=0.0, le=100.0, description="Volumetric or capacitive soil moisture %")
+    soil_temperature_celsius: float = Field(..., ge=-10.0, le=60.0, description="Root-zone temperature in °C")
+    irrigation_flow_rate_lpm: float = Field(default=30.0, ge=0.0, description="Drip/sprinkler flow rate in Liters/Minute")
+    irrigation_duration_minutes: int = Field(default=60, ge=0, description="Nominal irrigation cycle duration in minutes")
+    water_tank_level_percent: Optional[float] = Field(default=85.0, ge=0.0, le=100.0, description="Water storage tank level %")
+    soil_ph: Optional[float] = Field(default=6.8, ge=0.0, le=14.0, description="Soil pH reading")
+    soil_ec_ds_m: Optional[float] = Field(default=1.2, ge=0.0, description="Soil Electrical Conductivity in dS/m")
+    is_simulated: bool = Field(default=True, description="True if telemetry originates from simulated IoT layer")
+
+
+class IoTPreset(BaseModel):
+    preset_id: str
+    name: str
+    description: str
+    telemetry: SensorTelemetry
+
+
+class IoTPresetsResponse(BaseModel):
+    presets: list[IoTPreset]
+
+
+# ===================================# Sustainability Score Schemas
+# ===================================
+class SustainabilityScoreRequest(BaseModel):
+    crop: str = Field(..., min_length=1, description="Target crop name")
+    farm_area_hectares: float = Field(default=0.1, gt=0.0, le=10000.0, description="Farm plot size in hectares")
+    soil_type: Optional[str] = Field(default=None, description="Soil classification")
+    previous_crop: Optional[str] = Field(default=None, description="Previously harvested crop")
+    action: str = Field(default="delay", pattern="^(delay|irrigate_now)$", description="Planned irrigation decision")
+
+    # Climatological parameters (from live weather or user)
+    temperature_celsius: float = Field(..., ge=-10.0, le=60.0, description="Ambient air temperature in °C")
+    humidity_percent: float = Field(..., ge=0.0, le=100.0, description="Relative humidity in %")
+    rain_probability_percent: float = Field(default=0.0, ge=0.0, le=100.0, description="Probability of rain in %")
+    expected_rainfall_mm: float = Field(default=0.0, ge=0.0, le=1000.0, description="Expected precipitation in mm")
+
+    # Optional IoT telemetry override (defaults to simulated optimal profile if omitted)
+    telemetry: Optional[SensorTelemetry] = Field(default=None, description="Simulated or real IoT telemetry")
+    soil_moisture_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Convenience override for soil moisture")
+
+
+class ScoreBreakdownItem(BaseModel):
+    dimension: str
+    points: float
+    max_points: float
+    percentage: float
+    reason: str
+    status: str
+
+
+class WaterImpactEstimate(BaseModel):
+    litres: int
+    impact_type: str  # "saved", "unnecessary_use", "neutral"
+    label: str
+    formula_basis: str
+
+
+class ActionComparisonOption(BaseModel):
+    action: str
+    score: int
+    score_label: str
+    water_impact_litres: int
+    water_impact_type: str
+
+
+class SustainabilityScoreResponse(BaseModel):
+    total_score: int
+    score_label: str  # "Excellent", "Good", "Needs Improvement"
+    summary: str
+    recommendation: str
+    breakdown: dict[str, ScoreBreakdownItem]
+    water_impact: WaterImpactEstimate
+    comparison: dict[str, ActionComparisonOption]
+    telemetry_used: SensorTelemetry
+    simulated_telemetry_notice: str
