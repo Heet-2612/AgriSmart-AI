@@ -8,9 +8,12 @@ from app.config import settings
 from app.core.database import get_db_session
 from app.services.predictor_contract import PredictorProtocol, DefaultPredictor
 from app.services.disease_metadata_service import DiseaseMetadataService, get_default_metadata_service
+from app.services.leaf_presence_gate import LeafPresenceGate, get_leaf_presence_gate
+from app.services.validity_classifier import ValidityClassifier, get_validity_classifier
 from app.db.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
 
 def get_settings():
     """Dependency yielding app settings."""
@@ -25,6 +28,16 @@ def get_predictor() -> PredictorProtocol:
 def get_metadata_service() -> DiseaseMetadataService:
     """Dependency yielding the disease metadata mapping service."""
     return get_default_metadata_service()
+
+
+def get_leaf_gate() -> LeafPresenceGate:
+    """Dependency yielding the active E14 leaf presence gate."""
+    return get_leaf_presence_gate()
+
+
+def get_validity_service() -> ValidityClassifier:
+    """Dependency yielding the active E12 validity classifier."""
+    return get_validity_classifier()
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db_session)) -> User:
     """Dependency yielding the currently authenticated user based on Bearer token."""
@@ -54,7 +67,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     result = await db.execute(select(User).where(User.id == user_id_int))
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise credentials_exception
     if not user.is_active:
@@ -75,4 +88,13 @@ async def get_optional_user(token: str = Depends(oauth2_scheme_optional), db: As
     return await get_current_user(token=token, db=db)
 
 
-__all__ = ["get_settings", "get_db_session", "get_predictor", "get_metadata_service", "get_current_user", "get_optional_user"]
+__all__ = [
+    "get_settings",
+    "get_db_session",
+    "get_predictor",
+    "get_metadata_service",
+    "get_leaf_gate",
+    "get_validity_service",
+    "get_current_user",
+    "get_optional_user",
+]

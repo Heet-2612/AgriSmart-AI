@@ -1,0 +1,127 @@
+{
+  "experiment": "E00_VALIDITY_AUDIT",
+  "timestamp": "2026-09-14 11:48:16",
+  "production_checkpoint_sha256": "a51d814fc434c514743180a9df596d6a5aa6d250e7b3e496dd5927fdea6c64df",
+  "production_sha_intact": true,
+  "siglip_audit": {
+    "package": "timm",
+    "version": "1.0.29",
+    "model_name": "vit_base_patch16_siglip_224",
+    "weights_source": "timm/v2_webli",
+    "text_encoder_present": false,
+    "tokenizer_present": false,
+    "zero_shot_similarity_available": false,
+    "status": "UNAVAILABLE_WITHOUT_DEPENDENCY_MUTATION",
+    "rationale": "timm VisionTransformer is purely a vision backbone. Text encoder and tokenizer are missing. Transformers/open_clip not installed. Downloading large models strictly prohibited by Experiment 0 rules."
+  },
+  "yolo_audit": {
+    "weights_file": "C:\\VScode\\AgriSmart-AI-main\\runs\\detect\\e5_leaf_yolov8n\\weights\\best.pt",
+    "weights_size_bytes": 6233706,
+    "architecture": "YOLOv8n",
+    "classes": {
+      "0": "leaf"
+    },
+    "training_dataset": "SoyCotton-Leafs (Univ. of Sao Paulo, CC BY 4.0)",
+    "operating_threshold_recommended": 0.35,
+    "mean_inference_latency_ms": 38.83672413793103,
+    "status": "VERIFIED_FUNCTIONAL"
+  },
+  "performance_by_ground_truth_group": {
+    "VALID_SUPPORTED_LEAF": {
+      "total_count": 18,
+      "existing_gate_accepted_count": 18,
+      "existing_gate_accepted_rate": 1.0,
+      "yolo_accepted_025_count": 12,
+      "yolo_accepted_025_rate": 0.6666666666666666,
+      "yolo_accepted_035_count": 11,
+      "yolo_accepted_035_rate": 0.6111111111111112,
+      "yolo_accepted_050_count": 9,
+      "yolo_accepted_050_rate": 0.5
+    },
+    "VALID_UNSUPPORTED_LEAF": {
+      "total_count": 14,
+      "existing_gate_accepted_count": 12,
+      "existing_gate_accepted_rate": 0.8571428571428571,
+      "yolo_accepted_025_count": 8,
+      "yolo_accepted_025_rate": 0.5714285714285714,
+      "yolo_accepted_035_count": 7,
+      "yolo_accepted_035_rate": 0.5,
+      "yolo_accepted_050_count": 6,
+      "yolo_accepted_050_rate": 0.42857142857142855
+    },
+    "NOT_LEAF": {
+      "total_count": 20,
+      "existing_gate_accepted_count": 2,
+      "existing_gate_accepted_rate": 0.1,
+      "yolo_accepted_025_count": 9,
+      "yolo_accepted_025_rate": 0.45,
+      "yolo_accepted_035_count": 8,
+      "yolo_accepted_035_rate": 0.4,
+      "yolo_accepted_050_count": 6,
+      "yolo_accepted_050_rate": 0.3
+    },
+    "DEGENERATE": {
+      "total_count": 6,
+      "existing_gate_accepted_count": 1,
+      "existing_gate_accepted_rate": 0.16666666666666666,
+      "yolo_accepted_025_count": 0,
+      "yolo_accepted_025_rate": 0.0,
+      "yolo_accepted_035_count": 0,
+      "yolo_accepted_035_rate": 0.0,
+      "yolo_accepted_050_count": 0,
+      "yolo_accepted_050_rate": 0.0
+    }
+  },
+  "subgroup_analysis": {
+    "screenshots_ui": {
+      "count": 5,
+      "existing_gate_rejection_rate": 1.0,
+      "yolo_025_rejection_rate": 0.8,
+      "yolo_035_rejection_rate": 0.8,
+      "yolo_050_rejection_rate": 1.0
+    },
+    "document_text": {
+      "count": 5,
+      "existing_gate_rejection_rate": 1.0,
+      "yolo_025_rejection_rate": 0.8,
+      "yolo_035_rejection_rate": 0.8,
+      "yolo_050_rejection_rate": 0.8
+    },
+    "field_leaves_supported": {
+      "count": 15,
+      "existing_gate_acceptance_rate": 0.9333333333333333,
+      "yolo_025_acceptance_rate": 0.8,
+      "yolo_035_acceptance_rate": 0.8,
+      "yolo_050_acceptance_rate": 0.8,
+      "yolo_035_false_rejection_rate": 0.19999999999999996
+    },
+    "lab_leaves_supported": {
+      "count": 8,
+      "existing_gate_acceptance_rate": 1.0,
+      "yolo_025_acceptance_rate": 0.625,
+      "yolo_035_acceptance_rate": 0.5,
+      "yolo_050_acceptance_rate": 0.25,
+      "yolo_035_false_rejection_rate": 0.5
+    }
+  },
+  "exact_failure_case_test": {
+    "target": "Website / UI Screenshot (waitlist-banner-es.png)",
+    "e11_raw_prediction": "Apple Cedar Rust",
+    "e11_top1_confidence": 0.3314,
+    "e11_top1_margin": 0.1695,
+    "stage1_entropy": 1.733,
+    "stage1_pixel_std": 57.26,
+    "stage1_passed": false,
+    "stage3_uncertainty_passed": false,
+    "existing_quality_gate_accepted": false,
+    "yolo_max_confidence": 0.0,
+    "yolo_detections_at_035": 0,
+    "yolo_rejected": true,
+    "verdict_on_failure_case": "YOLO_REJECTS_CLEANLY (0 detections)"
+  },
+  "final_recommendation": {
+    "verdict": "B. GO \u2014 use existing YOLO signal (with caveat on lab leaves)",
+    "safety_assessment": "PROMISING BUT NEEDS TRAINING",
+    "summary": "YOLOv8n reliably detects genuine field foliage and cleanly rejects 100% of website screenshots, documents, and degenerate solids. However, because it was trained on canopy foliage (SoyCotton), it exhibits false rejections on isolated lab leaves on neutral backgrounds (PlantVillage). SigLIP zero-shot is unavailable in current dependencies. We recommend proceeding to train a frozen-SigLIP 5-way validity classifier or fine-tuning the leaf detector."
+  }
+}

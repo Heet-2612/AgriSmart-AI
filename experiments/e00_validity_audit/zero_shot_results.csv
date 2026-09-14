@@ -1,0 +1,5 @@
+# ZERO_SHOT_SIGLIP_AUDIT_STATUS: UNAVAILABLE_IN_CURRENT_LOCKED_ENV
+# Reason: timm v1.0.29 vit_base_patch16_siglip_224 does not expose a text encoder or tokenizer.
+# HuggingFace transformers and open_clip are not installed. Dependency installation and downloading large model weights are strictly prohibited by Experiment 0 rules.
+status,reason
+UNAVAILABLE,timm_vision_transformer_lacks_text_tower
