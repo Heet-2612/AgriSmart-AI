@@ -153,7 +153,7 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
                 gemini_failed = True
         except GeminiAPIError as e:
             code = getattr(e, 'code', None)
-            if code in (429, 500, 502, 503, 504):
+            if code in (404, 429, 500, 502, 503, 504):
                 logger.warning(f"Gemini generation transient failure (code={code}), falling back to Groq: {e}")
                 gemini_failed = True
             else:
@@ -174,7 +174,7 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=messages,
-                max_tokens=1024,
+                max_tokens=900,
                 temperature=0.3
             )
             
