@@ -21,6 +21,12 @@ from app.services.predictor_contract import PredictionOutput, PredictorProtocol
 from app.services.disease_metadata_service import DiseaseMetadataService
 
 
+def _get_valid_sample_image() -> io.BytesIO:
+    sample_path = Path(__file__).resolve().parents[1] / "fixtures" / "samples" / "tomato_leaf.jpg"
+    with open(sample_path, "rb") as f:
+        return io.BytesIO(f.read())
+
+
 class MockPredictorDouble:
     """Explicit test double for ML Predictor.
 
@@ -119,7 +125,7 @@ def test_successful_prediction_flow(test_db_session):
     app.dependency_overrides[get_metadata_service] = lambda: test_metadata_service
 
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -188,7 +194,7 @@ def test_dict_output_normalization(test_db_session):
     app.dependency_overrides[get_db_session] = override_db
     app.dependency_overrides[get_predictor] = lambda: test_predictor
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -234,7 +240,7 @@ def test_model_unavailable_returns_503(test_db_session):
     app.dependency_overrides[get_predictor] = lambda: test_predictor
 
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -274,7 +280,7 @@ def test_inference_failure_returns_500(test_db_session):
     app.dependency_overrides[get_predictor] = lambda: test_predictor
 
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -313,7 +319,7 @@ def test_invalid_image_from_predictor_returns_400(test_db_session):
     app.dependency_overrides[get_predictor] = lambda: test_predictor
 
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -357,7 +363,7 @@ def test_database_persistence_failure_returns_controlled_500():
     app.dependency_overrides[get_predictor] = lambda: test_predictor
 
     client = TestClient(app)
-    sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+    sample_jpeg = _get_valid_sample_image()
 
     try:
         response = client.post(
@@ -387,7 +393,7 @@ def test_contract_guarantees_no_fake_predictions_on_any_error():
         test_predictor = MockPredictorDouble(exception_to_raise=err)
         app.dependency_overrides[get_predictor] = lambda: test_predictor
         client = TestClient(app)
-        sample_jpeg = io.BytesIO(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00\xff\xd9")
+        sample_jpeg = _get_valid_sample_image()
 
         try:
             response = client.post(

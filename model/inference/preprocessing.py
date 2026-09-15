@@ -55,4 +55,4 @@ def preprocess_image_tensor(image_input: Union[str, Path, Image.Image]) -> torch
         raise ValueError("Unsupported or corrupted image file. Please upload a valid crop photo (JPG, PNG, WEBP).")
 
     tensor = siglip_transform(img)
-    return tensor.unsqueeze(0)
+    return tensor.unsqueeze(0).to(dtype=torch.float32)

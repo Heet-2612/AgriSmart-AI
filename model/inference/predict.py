@@ -19,6 +19,7 @@ import torch.nn as nn
 from PIL import Image
 
 from model.inference.preprocessing import preprocess_image_tensor
+from model.inference.torch_config import resolve_inference_device, configure_inference_backends
 
 # Canonical, immutable HYBRID-10 taxonomy ordering (Indices 0..9)
 HYBRID10_CLASSES: Tuple[str, ...] = (
@@ -67,9 +68,10 @@ class E11SigLIPModel(nn.Module):
 class E11SigLIPPredictor:
     """Production predictor caching the loaded SigLIP model across inferences."""
 
-    def __init__(self, checkpoint_path: Union[str, Path]):
+    def __init__(self, checkpoint_path: Union[str, Path], device: Optional[Union[str, torch.device]] = None):
+        configure_inference_backends()
         self.checkpoint_path = Path(checkpoint_path)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = resolve_inference_device(device)
         self.model: Optional[E11SigLIPModel] = None
         self.class_names: Sequence[str] = HYBRID10_CLASSES
         self.model_version: str = DEFAULT_MODEL_VERSION
@@ -115,8 +117,8 @@ class E11SigLIPPredictor:
 
         model.classifier.load_state_dict(head_state_dict)
 
-        # Move to selected device and set eval mode
-        model.to(self.device)
+        # Enforce canonical float32 precision, move to selected device, and set eval mode
+        model.to(self.device).float()
         model.eval()
         for p in model.parameters():
             p.requires_grad = False
@@ -135,11 +137,11 @@ class E11SigLIPPredictor:
         if self.model is None:
             raise ModelNotReadyError("Model is not initialized.")
 
-        # Preprocess into SigLIP normalized tensor (1, 3, 224, 224)
-        input_tensor = preprocess_image_tensor(img_path).to(self.device)
+        # Preprocess into SigLIP normalized float32 tensor (1, 3, 224, 224)
+        input_tensor = preprocess_image_tensor(img_path).to(device=self.device, dtype=torch.float32)
 
         with torch.inference_mode():
-            logits = self.model(input_tensor)
+            logits = self.model(input_tensor).float()
             probs = torch.softmax(logits, dim=-1).squeeze(0)
 
         probs_cpu = probs.cpu().numpy()
