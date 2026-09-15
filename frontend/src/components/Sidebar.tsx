@@ -33,15 +33,29 @@ export function Sidebar({
   onNavigateHowItWorks,
   className = '',
 }: SidebarProps) {
+  const { activeDiagnosis, isAgronomistOpen, isMissingDiagnosisOpen, openAgronomist, openMissingDiagnosis } = useDiagnosis();
+
+  const [currentHash, setCurrentHash] = useState(
+    typeof window !== 'undefined' ? window.location.hash : ''
+  );
+
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    
+    // Sync hash state when activeView changes (since AppShell uses pushState without triggering hashchange)
+    setCurrentHash(window.location.hash);
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeView]);
+
   const isCropRecActive = activeView === 'crop-recommendation';
   const isSustainActive = activeView === 'sustainability';
-  
-  // Note: Weather is handled dynamically by anchor clicks if it's on the diagnose page, 
-  // but if we were strictly tracking it, we could add hash checking. For now it uses diagnose view.
-  const isFarmInsightActive = isCropRecActive || isSustainActive || activeView === 'diagnose';
-  const isDiagnoseActive = activeView === 'diagnose' || activeView === 'home';
+  const isWeatherActive = currentHash === '#weather-intelligence';
+  const isAgronomistActive = isAgronomistOpen || isMissingDiagnosisOpen;
 
-  const { activeDiagnosis, openAgronomist, openMissingDiagnosis } = useDiagnosis();
+  const isFarmInsightActive = isCropRecActive || isSustainActive || isWeatherActive || isAgronomistActive;
+  const isDiagnoseActive = (activeView === 'diagnose' || activeView === 'home') && !isWeatherActive && !isAgronomistActive;
 
   // Submenu starts expanded if currently on a child route, or true by default
   const [isFarmInsightOpen, setIsFarmInsightOpen] = useState(true);
@@ -244,11 +258,20 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={handleWeatherClick}
+                  aria-current={isWeatherActive ? 'page' : undefined}
                   aria-label="Farm Insight — Weather Intelligence"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]"
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                    isWeatherActive
+                      ? 'bg-[#234E37] text-white shadow-2xs font-bold'
+                      : 'text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                  }`}
                 >
                   <span
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E8F3EC] text-[#234E37]"
+                    className={`flex h-6 w-6 items-center justify-center rounded-lg ${
+                      isWeatherActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#E8F3EC] text-[#234E37]'
+                    }`}
                     aria-hidden="true"
                   >
                     <CloudSun size={13} strokeWidth={2.2} />
@@ -260,11 +283,20 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={handleAgronomistClick}
+                  aria-current={isAgronomistActive ? 'page' : undefined}
                   aria-label="Farm Insight — AI Agronomist"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]"
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                    isAgronomistActive
+                      ? 'bg-[#234E37] text-white shadow-2xs font-bold'
+                      : 'text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                  }`}
                 >
                   <span
-                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E8F3EC] text-[#234E37]"
+                    className={`flex h-6 w-6 items-center justify-center rounded-lg ${
+                      isAgronomistActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#E8F3EC] text-[#234E37]'
+                    }`}
                     aria-hidden="true"
                   >
                     <Bot size={13} strokeWidth={2.2} />
