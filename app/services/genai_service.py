@@ -197,7 +197,7 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=messages,
-                max_tokens=1024,
+                max_tokens=900,
                 temperature=0.3
             )
             
