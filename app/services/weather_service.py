@@ -170,7 +170,7 @@ class WeatherService:
         return results[0]
 
     async def fetch_forecast_data(
-        self, latitude: float, longitude: float, client: httpx.AsyncClient
+        self, latitude: float, longitude: float, client: httpx.AsyncClient, forecast_days: int = 7
     ) -> Dict[str, Any]:
         """Fetch real-time atmospheric metrics and daily forecast from Open-Meteo API."""
         try:
@@ -181,6 +181,7 @@ class WeatherService:
                     "longitude": longitude,
                     "current": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation",
                     "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max",
+                    "forecast_days": forecast_days,
                     "timezone": "auto",
                 },
             )

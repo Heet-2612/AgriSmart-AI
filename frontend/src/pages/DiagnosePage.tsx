@@ -4,7 +4,9 @@ import { Button } from '../components/Button';
 import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
 import { BonusFeaturesSection } from '../components/crop/BonusFeaturesSection';
+import { WeatherIntelligenceCard } from '../components/weather/WeatherIntelligenceCard';
 import { predictDisease, ApiError } from '../api/client';
+
 import { PredictionResponse } from '../types';
 
 /** Maximum allowed image upload size: 10 MB */
@@ -634,11 +636,28 @@ export function DiagnosePage({
         </div>
       </section>
 
+      {/* ── Live Weather & Farm Intelligence Section ── */}
+      <section
+        id="weather-intelligence"
+        className="py-6 sm:py-8"
+        aria-label="Weather-Based Farm Intelligence"
+      >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <WeatherIntelligenceCard
+            initialLocation="Pune"
+            initialCrop={cropType || undefined}
+            initialDisease={predictionResult?.predicted_class || undefined}
+            onNavigateSustainability={onOpenSustainabilityScore}
+          />
+        </div>
+      </section>
+
       {/* ── Bonus Features Section ── */}
       <BonusFeaturesSection
         onSelectCropRecommendation={onOpenCropRecommendation}
         onSelectSustainabilityScore={onOpenSustainabilityScore}
       />
+
 
       {/* ── Supported Crops Gallery (Matching Reference Design) ── */}
       <section

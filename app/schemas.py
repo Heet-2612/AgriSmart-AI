@@ -323,3 +323,59 @@ class SustainabilityScoreResponse(BaseModel):
     comparison: dict[str, ActionComparisonOption]
     telemetry_used: SensorTelemetry
     simulated_telemetry_notice: str
+
+
+# ===================================
+# Weather Intelligence Schemas
+# ===================================
+class WeatherIntelligenceRequest(BaseModel):
+    location: str = Field(..., min_length=1, description="City, district, or town name")
+    crop: Optional[str] = Field(default=None, description="Current or planned crop species")
+    soil_moisture_percent: Optional[float] = Field(
+        default=None, ge=0.0, le=100.0, description="Volumetric soil moisture percentage"
+    )
+    soil_type: Optional[str] = Field(default=None, description="Soil classification: clay, sandy, black, loam, etc.")
+    diagnosed_disease: Optional[str] = Field(default=None, description="Diagnosed disease class or display name")
+    irrigation_status: Optional[str] = Field(default=None, description="Current or planned irrigation status")
+    forecast_days: int = Field(default=7, ge=1, le=7, description="Number of daily forecast days (1-7)")
+
+
+class ForecastDay(BaseModel):
+    date: str
+    temp_min: float
+    temp_max: float
+    precipitation_sum: float
+    precipitation_probability: float
+    weather_code: int
+    condition: str
+
+
+class AgronomicAlert(BaseModel):
+    category: str
+    severity: str
+    action: str
+    title: str
+    message: str
+    reason: str
+    priority: int
+
+
+class PrimaryAction(BaseModel):
+    action: str
+    badge_label: str
+    headline: str
+    detail: str
+    severity: str
+
+
+class WeatherIntelligenceResponse(BaseModel):
+    location: WeatherLocation
+    current: WeatherCurrent
+    forecast_daily: list[ForecastDay]
+    primary_action: PrimaryAction
+    alerts: list[AgronomicAlert]
+    farm_context_applied: Dict[str, Any]
+    farm_context_complete: bool
+    data_source: str = "Open-Meteo API & India Meteorological Department (IMD) Normals"
+    timestamp: Optional[datetime] = None
+

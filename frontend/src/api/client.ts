@@ -12,9 +12,12 @@ import {
   SustainabilityScoreRequest,
   SustainabilityScoreResponse,
   IoTPresetsResponse,
+  WeatherIntelligenceRequest,
+  WeatherIntelligenceResponse,
 } from '../types';
 
 export class ApiError extends Error {
+
   status: number;
 
   constructor(status: number, message: string) {
@@ -164,6 +167,40 @@ export async function getWeather(location: string): Promise<WeatherResponse> {
 
   return res.json();
 }
+
+export async function getWeatherIntelligence(
+  data: WeatherIntelligenceRequest
+): Promise<WeatherIntelligenceResponse> {
+  const trimmedLocation = (data.location || '').trim();
+  if (!trimmedLocation) {
+    throw new ApiError(400, 'Location query cannot be empty.');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch('/api/weather-intelligence', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...data,
+        location: trimmedLocation,
+      }),
+    });
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the weather intelligence service. Please check your network connection.');
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = extractErrorMessage(errorData, res.status, `Weather intelligence retrieval failed with status: ${res.status}`);
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json();
+}
+
 
 export async function sendChatMessage(data: ChatRequest): Promise<ChatAnswer> {
   const trimmedQuestion = data.question ? data.question.trim() : '';

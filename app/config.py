@@ -53,8 +53,8 @@ class Settings(BaseModel):
     # GenAI Settings
     GEMINI_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))
     GROQ_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
-    GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
-    GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-8b-8192"))
+    GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"))
+    GROQ_MODEL: str = Field(default_factory=lambda: os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b"))
 
     # Weather Intelligence Settings
     OPEN_METEO_GEOCODING_URL: str = Field(
