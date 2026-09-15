@@ -439,14 +439,14 @@ export function DiagnosisChatAssistant({
 
   const quickPrompts = QUICK_PROMPTS_BY_LANG[language] || QUICK_PROMPTS_BY_LANG.en;
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`AI Chat Assistant — ${displayName}`}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs"
-    >
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`AI Chat Assistant — ${displayName}`}
+        onClick={onClose}
+        className="fixed inset-x-0 bottom-0 top-16 sm:top-20 z-40 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs"
+      >
       <div
         onClick={(e) => e.stopPropagation()}
         className="relative flex flex-col w-full max-w-2xl h-[92vh] max-h-[780px] rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden"

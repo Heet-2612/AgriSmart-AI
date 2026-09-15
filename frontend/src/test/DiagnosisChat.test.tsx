@@ -6,6 +6,13 @@ import { DiagnosisChatAssistant } from '../components/chat/DiagnosisChatAssistan
 import { PredictionResponse, ChatAnswer } from '../types';
 import * as client from '../api/client';
 import { AuthContext } from '../context/AuthContext';
+import { useDiagnosis } from '../context/DiagnosisContext';
+
+vi.mock('../context/DiagnosisContext', () => ({
+  useDiagnosis: vi.fn(() => ({
+    openAgronomist: vi.fn(),
+  })),
+}));
 
 // Mock localStorage for test environment
 const localStorageMock = (() => {
@@ -75,15 +82,14 @@ describe('DiagnosisResult Visual States & AI Chat Handoff', () => {
     expect(screen.getByText(/consider capturing a sharper, well-lit photograph/i)).toBeInTheDocument();
   });
 
-  it('opens DiagnosisChatAssistant when clicking Ask AI Assistant', () => {
+  it('calls openAgronomist when clicking Ask AI Assistant', () => {
+    const openAgronomistMock = vi.fn();
+    vi.mocked(useDiagnosis).mockReturnValue({ openAgronomist: openAgronomistMock } as any);
+
     render(<DiagnosisResult result={diseasedResult} onReset={vi.fn()} />);
-    
-    expect(screen.queryByRole('dialog', { name: /ai chat assistant/i })).not.toBeInTheDocument();
-
-    const askAiBtn = screen.getByRole('button', { name: /ask ai assistant about this diagnosis/i });
-    fireEvent.click(askAiBtn);
-
-    expect(screen.getByRole('dialog', { name: /ai chat assistant — potato — early blight/i })).toBeInTheDocument();
+    const askButton = screen.getByRole('button', { name: /ask ai assistant about this diagnosis/i });
+    fireEvent.click(askButton);
+    expect(openAgronomistMock).toHaveBeenCalled();
   });
 });
 

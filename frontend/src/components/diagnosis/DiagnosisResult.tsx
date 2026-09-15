@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -15,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../Button';
 import { PredictionResponse } from '../../types';
-import { DiagnosisChatAssistant } from '../chat/DiagnosisChatAssistant';
+import { useDiagnosis } from '../../context/DiagnosisContext';
 
 interface DiagnosisResultProps {
   result: PredictionResponse;
@@ -32,7 +31,7 @@ export function DiagnosisResult({
   cropType,
   onReset,
 }: DiagnosisResultProps) {
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const { openAgronomist } = useDiagnosis();
 
   const displayName = result.display_name?.trim() || result.predicted_class || 'Unknown Condition';
   const confidencePercent =
@@ -314,7 +313,7 @@ export function DiagnosisResult({
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setIsChatOpen(true)}
+              onClick={openAgronomist}
               className="w-full sm:w-auto py-3.5 px-7 text-sm font-bold rounded-full border border-[#2D5A3D]/40 bg-white text-[#1E4D35] hover:bg-[#F0F7F2] flex items-center justify-center gap-2 shadow-2xs"
               aria-label="Ask Agro AI"
             >
@@ -350,7 +349,7 @@ export function DiagnosisResult({
             <div className="pt-1">
               <button
                 type="button"
-                onClick={() => setIsChatOpen(true)}
+                onClick={openAgronomist}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-[#163824] hover:bg-emerald-50 px-5 py-3 font-bold text-sm shadow-md transition-all active:scale-[0.98] cursor-pointer"
                 aria-label="Ask AI Assistant about this diagnosis"
               >
@@ -403,14 +402,6 @@ export function DiagnosisResult({
         </div>
 
       </div>
-
-      {/* ── Diagnosis AI Chat Assistant Modal ── */}
-      <DiagnosisChatAssistant
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        result={result}
-        cropType={cropType}
-      />
     </div>
   );
 }

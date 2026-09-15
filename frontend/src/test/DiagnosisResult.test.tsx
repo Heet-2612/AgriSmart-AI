@@ -5,6 +5,12 @@ import { DiagnosisResult } from '../components/diagnosis/DiagnosisResult';
 import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
 import { PredictionResponse } from '../types';
 
+vi.mock('../context/DiagnosisContext', () => ({
+  useDiagnosis: () => ({
+    openAgronomist: vi.fn(),
+  }),
+}));
+
 describe('DiagnosisResult Component', () => {
   const baseResult: PredictionResponse = {
     predicted_class: 'Apple___Apple_scab',

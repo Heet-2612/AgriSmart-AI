@@ -20,6 +20,7 @@ import { ModelUnavailable } from '../components/diagnosis/ModelUnavailable';
 import { BonusFeaturesSection } from '../components/crop/BonusFeaturesSection';
 import { WeatherIntelligenceCard } from '../components/weather/WeatherIntelligenceCard';
 import { predictDisease, ApiError } from '../api/client';
+import { useDiagnosis } from '../context/DiagnosisContext';
 
 import { PredictionResponse } from '../types';
 
@@ -194,8 +195,14 @@ export function DiagnosePage({
   const [apiError, setApiError] = useState<string | null>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [isModelUnavailable, setIsModelUnavailable] = useState<boolean>(false);
-  const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(initialResult);
+  const { activeDiagnosis: predictionResult, setActiveDiagnosis: setPredictionResult } = useDiagnosis();
   const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (initialResult && !predictionResult) {
+      setPredictionResult(initialResult);
+    }
+  }, [initialResult, predictionResult, setPredictionResult]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
