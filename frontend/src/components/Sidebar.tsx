@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Home, Sprout, Cpu, Sparkles, ChevronDown, Leaf } from 'lucide-react';
+import { Home, Sprout, Cpu, Sparkles, ChevronDown, Leaf, CloudSun, Bot } from 'lucide-react';
+import { useDiagnosis } from '../context/DiagnosisContext';
 
 export type AppView =
   | 'landing'
@@ -16,6 +17,7 @@ interface SidebarProps {
   onNavigateDiagnose?: () => void;
   onNavigateCropRecommendation?: () => void;
   onNavigateSustainability?: () => void;
+  onNavigateWeatherIntelligence?: () => void;
   onNavigateModelInfo?: () => void;
   onNavigateHowItWorks?: () => void;
   className?: string;
@@ -26,14 +28,20 @@ export function Sidebar({
   onNavigateDiagnose,
   onNavigateCropRecommendation,
   onNavigateSustainability,
+  onNavigateWeatherIntelligence,
   onNavigateModelInfo,
   onNavigateHowItWorks,
   className = '',
 }: SidebarProps) {
   const isCropRecActive = activeView === 'crop-recommendation';
   const isSustainActive = activeView === 'sustainability';
-  const isFarmInsightActive = isCropRecActive || isSustainActive;
+  
+  // Note: Weather is handled dynamically by anchor clicks if it's on the diagnose page, 
+  // but if we were strictly tracking it, we could add hash checking. For now it uses diagnose view.
+  const isFarmInsightActive = isCropRecActive || isSustainActive || activeView === 'diagnose';
   const isDiagnoseActive = activeView === 'diagnose' || activeView === 'home';
+
+  const { activeDiagnosis, openAgronomist, openMissingDiagnosis } = useDiagnosis();
 
   // Submenu starts expanded if currently on a child route, or true by default
   const [isFarmInsightOpen, setIsFarmInsightOpen] = useState(true);
@@ -63,6 +71,20 @@ export function Sidebar({
   const handleSustainClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onNavigateSustainability?.();
+  };
+
+  const handleWeatherClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onNavigateWeatherIntelligence?.();
+  };
+
+  const handleAgronomistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (activeDiagnosis) {
+      openAgronomist();
+    } else {
+      openMissingDiagnosis();
+    }
   };
 
   const handleModelInfoClick = (e: React.MouseEvent) => {
@@ -216,6 +238,38 @@ export function Sidebar({
                     <Leaf size={13} strokeWidth={2.2} />
                   </span>
                   <span className="truncate">Sustainability Score</span>
+                </button>
+
+                {/* 2c. Weather Intelligence */}
+                <button
+                  type="button"
+                  onClick={handleWeatherClick}
+                  aria-label="Farm Insight — Weather Intelligence"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]"
+                >
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E8F3EC] text-[#234E37]"
+                    aria-hidden="true"
+                  >
+                    <CloudSun size={13} strokeWidth={2.2} />
+                  </span>
+                  <span className="truncate">Weather Intelligence</span>
+                </button>
+
+                {/* 2d. AI Agronomist */}
+                <button
+                  type="button"
+                  onClick={handleAgronomistClick}
+                  aria-label="Farm Insight — AI Agronomist"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]"
+                >
+                  <span
+                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#E8F3EC] text-[#234E37]"
+                    aria-hidden="true"
+                  >
+                    <Bot size={13} strokeWidth={2.2} />
+                  </span>
+                  <span className="truncate">AI Agronomist</span>
                 </button>
               </div>
             )}
