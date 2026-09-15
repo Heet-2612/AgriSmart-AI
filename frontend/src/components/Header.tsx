@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { AgriSmartLogo } from './AgriSmartLogo';
 
 interface HeaderProps {
-  activeView?: 'landing' | 'home' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
+  activeView?: 'landing' | 'home' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'weather-intelligence' | 'login' | 'signup';
   onNavigateHome?: () => void;
   onNavigateDiagnose?: () => void;
   onNavigateCropRecommendation?: () => void;
   onNavigateSustainability?: () => void;
+  onNavigateWeatherIntelligence?: () => void;
   onNavigateModelInfo?: () => void;
   onNavigateHowItWorks?: () => void;
   onNavigateLogin?: () => void;
@@ -22,6 +23,7 @@ export function Header({
   onNavigateDiagnose,
   onNavigateCropRecommendation,
   onNavigateSustainability: _onNavigateSustainability,
+  onNavigateWeatherIntelligence,
   onNavigateModelInfo,
   onNavigateHowItWorks,
   onNavigateLogin,
@@ -196,7 +198,7 @@ export function Header({
                 aria-expanded={mobileFarmInsightOpen}
                 aria-label="Farm Insight"
                 className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-base font-medium cursor-pointer transition-colors ${
-                  activeView === 'crop-recommendation' || activeView === 'sustainability'
+                  activeView === 'crop-recommendation' || activeView === 'sustainability' || activeView === 'weather-intelligence'
                     ? 'text-[#1E4D35] bg-[#E4EFE7] font-semibold'
                     : 'text-slate-700 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
                 }`}
@@ -242,6 +244,21 @@ export function Header({
                     }`}
                   >
                     Sustainability Score
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigateWeatherIntelligence?.();
+                    }}
+                    aria-label="Farm Insight — Weather Intelligence"
+                    className={`block w-full text-left rounded-xl px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                      activeView === 'weather-intelligence'
+                        ? 'bg-[#234E37] text-white font-bold'
+                        : 'text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                    }`}
+                  >
+                    Weather Intelligence
                   </button>
                 </div>
               )}

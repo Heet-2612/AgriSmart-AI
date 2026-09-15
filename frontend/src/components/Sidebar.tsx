@@ -8,6 +8,7 @@ export type AppView =
   | 'diagnose'
   | 'crop-recommendation'
   | 'sustainability'
+  | 'weather-intelligence'
   | 'login'
   | 'signup';
 
@@ -51,7 +52,7 @@ export function Sidebar({
 
   const isCropRecActive = activeView === 'crop-recommendation';
   const isSustainActive = activeView === 'sustainability';
-  const isWeatherActive = currentHash === '#weather-intelligence';
+  const isWeatherActive = activeView === 'weather-intelligence' || currentHash === '#weather-intelligence';
   const isAgronomistActive = isAgronomistOpen || isMissingDiagnosisOpen;
 
   const isFarmInsightActive = isCropRecActive || isSustainActive || isWeatherActive || isAgronomistActive;

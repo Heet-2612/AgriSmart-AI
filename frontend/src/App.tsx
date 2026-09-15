@@ -12,6 +12,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { AgriSmartLogo } from './components/AgriSmartLogo';
 import { DiagnosisProvider, useDiagnosis } from './context/DiagnosisContext';
 import { DiagnosisChatAssistant } from './components/chat/DiagnosisChatAssistant';
+import { WeatherIntelligenceCard } from './components/weather/WeatherIntelligenceCard';
 
 function GlobalModals({ onNavigateDiagnose }: { onNavigateDiagnose: () => void }) {
   const { 
@@ -68,7 +69,7 @@ function GlobalModals({ onNavigateDiagnose }: { onNavigateDiagnose: () => void }
   );
 }
 
-export type AppView = 'landing' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
+export type AppView = 'landing' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'weather-intelligence' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -167,9 +168,10 @@ export function AppShell({ initialView }: AppShellProps = {}) {
     if (initialView) return initialView;
     if (typeof window !== 'undefined') {
       const hash = window.location.hash;
-      if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works' || hash === '#weather-intelligence') {
+      if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works') {
         return 'diagnose';
       }
+      if (hash === '#weather-intelligence') return 'weather-intelligence';
       if (hash === '#crop-recommendation') return 'crop-recommendation';
       if (hash === '#sustainability') return 'sustainability';
     }
@@ -187,8 +189,10 @@ export function AppShell({ initialView }: AppShellProps = {}) {
         setActiveView(e.state.view);
       } else {
         const hash = window.location.hash;
-        if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works' || hash === '#weather-intelligence') {
+        if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works') {
           setActiveView('diagnose');
+        } else if (hash === '#weather-intelligence') {
+          setActiveView('weather-intelligence');
         } else if (hash === '#crop-recommendation') {
           setActiveView('crop-recommendation');
         } else if (hash === '#sustainability') {
@@ -210,7 +214,7 @@ export function AppShell({ initialView }: AppShellProps = {}) {
     setActiveView(view);
 
     if (typeof window !== 'undefined') {
-      const newHash = targetHash || (view === 'diagnose' ? '#diagnose' : view === 'crop-recommendation' ? '#crop-recommendation' : view === 'sustainability' ? '#sustainability' : '');
+      const newHash = targetHash || (view === 'diagnose' ? '#diagnose' : view === 'crop-recommendation' ? '#crop-recommendation' : view === 'sustainability' ? '#sustainability' : view === 'weather-intelligence' ? '#weather-intelligence' : '');
       window.history.pushState({ view }, '', newHash ? `${window.location.pathname}${newHash}` : window.location.pathname);
     }
 
@@ -226,6 +230,7 @@ export function AppShell({ initialView }: AppShellProps = {}) {
 
   const handleNavigateLanding = () => navigateTo('landing');
   const handleNavigateDiagnose = (hash?: string) => navigateTo('diagnose', hash);
+  const handleOpenWeatherIntelligence = () => navigateTo('weather-intelligence');
   const handleOpenCropRecommendation = () => navigateTo('crop-recommendation');
   const handleOpenSustainability = () => navigateTo('sustainability');
   const handleNavigateLogin = () => navigateTo('login');
@@ -245,6 +250,7 @@ export function AppShell({ initialView }: AppShellProps = {}) {
           onNavigateDiagnose={() => navigateTo('diagnose')}
           onNavigateCropRecommendation={handleOpenCropRecommendation}
           onNavigateSustainability={handleOpenSustainability}
+          onNavigateWeatherIntelligence={handleOpenWeatherIntelligence}
           onNavigateModelInfo={() => navigateTo('diagnose', '#model-info')}
           onNavigateHowItWorks={() => navigateTo('diagnose', '#how-it-works')}
           onNavigateLogin={handleNavigateLogin}
@@ -279,9 +285,9 @@ export function AppShell({ initialView }: AppShellProps = {}) {
               onNavigateDiagnose={() => handleNavigateDiagnose()}
               onNavigateCropRecommendation={handleOpenCropRecommendation}
               onNavigateSustainability={handleOpenSustainability}
-              onNavigateWeatherIntelligence={() => handleNavigateDiagnose('#weather-intelligence')}
-              onNavigateModelInfo={() => handleNavigateDiagnose('#model-info')}
-              onNavigateHowItWorks={() => handleNavigateDiagnose('#how-it-works')}
+              onNavigateWeatherIntelligence={handleOpenWeatherIntelligence}
+              onNavigateModelInfo={() => navigateTo('diagnose', '#model-info')}
+              onNavigateHowItWorks={() => navigateTo('diagnose', '#how-it-works')}
               className="hidden md:flex"
             />
 
@@ -306,6 +312,17 @@ export function AppShell({ initialView }: AppShellProps = {}) {
                   onBack={() => handleNavigateDiagnose()}
                   onNavigateCropRecommendation={handleOpenCropRecommendation}
                 />
+              )}
+
+              {activeView === 'weather-intelligence' && (
+                <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-mesh-agri overflow-y-auto">
+                  <div className="mx-auto max-w-5xl">
+                    <WeatherIntelligenceCard
+                      initialLocation="Pune"
+                      onNavigateSustainability={handleOpenSustainability}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
