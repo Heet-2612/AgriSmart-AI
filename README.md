@@ -3,7 +3,7 @@ AgriSmart AI 🌾
 AgriSmart AI is an intelligent agricultural diagnostic and decision-support platform that combines computer vision, weather intelligence, agronomic recommendations, sustainability analytics, simulated IoT telemetry, and conversational AI to help farmers make faster and more informed decisions.
 Team: WebShooters  
 Institution: LJ Institute of Engineering and Technology
-🎥 Demo
+🎥 Demo : https://youtu.be/_znUEgbqXHk
 Watch the AgriSmart AI Demo
 ---
 🌱 The Problem
