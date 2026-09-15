@@ -1,7 +1,10 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from app.schemas import ChatRequest, ChatAnswer, ChatContext, WeatherContext, DiseaseMetadata as GenAIDiseaseMetadata, ChatSessionResponse, ChatMessageResponse, ChatHistoryMessage
 from app.services.disease_metadata_service import DiseaseMetadataService, get_default_metadata_service
@@ -67,6 +70,7 @@ async def chat(
     except ChatProviderUnavailableError as e:
         if current_user:
             await db.rollback()
+        logger.warning("Chat service unavailable: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Chat service is currently unavailable. Please try again later."
@@ -74,6 +78,7 @@ async def chat(
     except Exception as e:
         if current_user:
             await db.rollback()
+        logger.exception("Unexpected error during chat generation: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during chat generation."

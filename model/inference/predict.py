@@ -144,13 +144,13 @@ class E11SigLIPPredictor:
             logits = self.model(input_tensor).float()
             probs = torch.softmax(logits, dim=-1).squeeze(0)
 
-        probs_cpu = probs.cpu().numpy()
+        probs_list = probs.cpu().tolist()
         top_idx = int(torch.argmax(probs).item())
-        confidence = float(probs_cpu[top_idx])
+        confidence = float(probs_list[top_idx])
         predicted_class = self.class_names[top_idx]
 
         probabilities = {
-            self.class_names[i]: round(float(probs_cpu[i]), 4)
+            self.class_names[i]: round(float(probs_list[i]), 4)
             for i in range(len(self.class_names))
         }
 

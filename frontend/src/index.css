@@ -75,23 +75,67 @@ body {
     radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
 }
 
-/* Subtle Organic Leaf Sway Animation for AgriSmart AI Logo */
-@keyframes leaf-sway {
+/* ============================================================
+   AgriSmart AI Logo Constrained Sizing & Transform Animation
+   ============================================================ */
+
+.navbar-logo-img {
+  width: 36px;
+  height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.intro-logo-img {
+  width: 56px;
+  height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.footer-logo-img {
+  width: 28px;
+  height: 28px;
+  max-width: 28px;
+  max-height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+@keyframes logoFloat {
   0%, 100% {
-    transform: rotate(0deg) scale(1);
+    transform: translateY(0);
   }
-  25% {
-    transform: rotate(-8deg) scale(1.05);
-  }
-  75% {
-    transform: rotate(8deg) scale(1.05);
+  50% {
+    transform: translateY(-3px);
   }
 }
 
-.animate-leaf-sway {
-  display: inline-block;
-  transform-origin: 25% 85%;
-  animation: leaf-sway 3.4s ease-in-out infinite;
+.animate-logo-float {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  will-change: transform;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-float,
+  .navbar-logo-img,
+  .intro-logo-img,
+  .footer-logo-img,
+  .animate-leaf-sway {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* ============================================================

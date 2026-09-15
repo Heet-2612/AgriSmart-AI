@@ -1,6 +1,7 @@
-import { useState, Component, ReactNode, ErrorInfo } from 'react';
-import { Leaf } from 'lucide-react';
+import { useState, useEffect, Component, ReactNode, ErrorInfo } from 'react';
 import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
+import { LandingPage } from './pages/LandingPage';
 import { DiagnosePage } from './pages/DiagnosePage';
 import { CropRecommendationPage } from './pages/CropRecommendationPage';
 import { SustainabilityScorePage } from './pages/SustainabilityScorePage';
@@ -8,8 +9,9 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { AuthProvider } from './context/AuthContext';
 import { AuthModal } from './components/auth/AuthModal';
+import { AgriSmartLogo } from './components/AgriSmartLogo';
 
-export type AppView = 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
+export type AppView = 'landing' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -71,21 +73,20 @@ function Footer() {
       className="border-t border-[#E5E0D0] bg-[#FAF7EE] py-8"
       role="contentinfo"
     >
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           
           {/* Logo & Tagline */}
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3.5">
             <div className="flex items-center gap-2">
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-lg"
-                style={{ backgroundColor: '#10B981' }}
+              <div
+                className="flex h-7 w-7 max-h-7 max-w-7 items-center justify-center rounded-lg bg-[#E8F3EC] p-0.5 shrink-0 overflow-hidden"
                 aria-hidden="true"
               >
-                <Leaf size={16} strokeWidth={2.4} color="#FFFFFF" className="animate-leaf-sway" />
-              </span>
-              <span className="text-sm font-bold text-[#0F172A]">
-                AgriSmart <span style={{ color: '#10B981' }}>AI</span>
+                <AgriSmartLogo variant="footer" size={24} />
+              </div>
+              <span className="text-sm font-bold text-[#163824]">
+                AgriSmart <span className="font-serif italic font-normal text-[#2D6A4F]">AI</span>
               </span>
             </div>
             <span className="hidden sm:inline-block h-3.5 w-px bg-slate-300" aria-hidden="true" />
@@ -100,24 +101,74 @@ function Footer() {
   );
 }
 
-function AppShell() {
+interface AppShellProps {
+  initialView?: AppView;
+}
+
+export function AppShell({ initialView }: AppShellProps = {}) {
   const getInitialView = (): AppView => {
-    return 'home';
+    if (initialView) return initialView;
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works') {
+        return 'diagnose';
+      }
+      if (hash === '#crop-recommendation') return 'crop-recommendation';
+      if (hash === '#sustainability') return 'sustainability';
+    }
+    return 'landing';
   };
 
   const [activeView, setActiveView] = useState<AppView>(getInitialView);
-  const [previousView, setPreviousView] = useState<'home' | 'crop-recommendation' | 'sustainability'>('home');
+  const [previousView, setPreviousView] = useState<AppView>('landing');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const navigateTo = (view: AppView) => {
-    if (activeView === 'home' || activeView === 'crop-recommendation' || activeView === 'sustainability') {
+  // Sync with browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.view) {
+        setActiveView(e.state.view);
+      } else {
+        const hash = window.location.hash;
+        if (hash === '#diagnose' || hash === '#diagnose-console' || hash === '#model-info' || hash === '#how-it-works') {
+          setActiveView('diagnose');
+        } else if (hash === '#crop-recommendation') {
+          setActiveView('crop-recommendation');
+        } else if (hash === '#sustainability') {
+          setActiveView('sustainability');
+        } else {
+          setActiveView('landing');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (view: AppView, targetHash?: string) => {
+    if (activeView !== 'login' && activeView !== 'signup') {
       setPreviousView(activeView);
     }
     setActiveView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (typeof window !== 'undefined') {
+      const newHash = targetHash || (view === 'diagnose' ? '#diagnose' : view === 'crop-recommendation' ? '#crop-recommendation' : view === 'sustainability' ? '#sustainability' : '');
+      window.history.pushState({ view }, '', newHash ? `${window.location.pathname}${newHash}` : window.location.pathname);
+    }
+
+    if (targetHash) {
+      setTimeout(() => {
+        const el = document.querySelector(targetHash);
+        el?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
-  const handleNavigateHome = () => navigateTo('home');
+  const handleNavigateLanding = () => navigateTo('landing');
+  const handleNavigateDiagnose = (hash?: string) => navigateTo('diagnose', hash);
   const handleOpenCropRecommendation = () => navigateTo('crop-recommendation');
   const handleOpenSustainability = () => navigateTo('sustainability');
   const handleNavigateLogin = () => navigateTo('login');
@@ -130,47 +181,75 @@ function AppShell() {
 
   return (
     <div id="app-shell" className="flex min-h-screen flex-col bg-[#FAF7EE]">
-      <Header
-        activeView={activeView}
-        onNavigateHome={handleNavigateHome}
-        onNavigateCropRecommendation={handleOpenCropRecommendation}
-        onNavigateSustainability={handleOpenSustainability}
-        onNavigateLogin={handleNavigateLogin}
-        onNavigateSignup={handleNavigateSignup}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-      />
-      <ErrorBoundary fallbackView={handleNavigateHome}>
-        {activeView === 'home' && (
-          <DiagnosePage
-            onOpenCropRecommendation={handleOpenCropRecommendation}
-            onOpenSustainabilityScore={handleOpenSustainability}
-          />
-        )}
-        {activeView === 'crop-recommendation' && (
-          <CropRecommendationPage
-            onBack={handleNavigateHome}
-            onNavigateSustainability={handleOpenSustainability}
-          />
-        )}
-        {activeView === 'sustainability' && (
-          <SustainabilityScorePage
-            onBack={handleNavigateHome}
-            onNavigateCropRecommendation={handleOpenCropRecommendation}
-          />
-        )}
-        {activeView === 'login' && (
+      {activeView !== 'landing' && (
+        <Header
+          activeView={activeView === 'diagnose' ? 'home' : activeView}
+          onNavigateHome={() => navigateTo('landing')}
+          onNavigateDiagnose={() => navigateTo('diagnose')}
+          onNavigateCropRecommendation={handleOpenCropRecommendation}
+          onNavigateSustainability={handleOpenSustainability}
+          onNavigateModelInfo={() => navigateTo('diagnose', '#model-info')}
+          onNavigateHowItWorks={() => navigateTo('diagnose', '#how-it-works')}
+          onNavigateLogin={handleNavigateLogin}
+          onNavigateSignup={handleNavigateSignup}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+        />
+      )}
+      {/* Main Body Shell */}
+      <ErrorBoundary fallbackView={handleNavigateLanding}>
+        {/* Exactly ONE Intro / Landing Screen when site opens */}
+        {activeView === 'landing' ? (
+          <LandingPage onGetStarted={() => handleNavigateDiagnose()} />
+        ) : activeView === 'login' ? (
           <LoginPage
             onBack={handleReturnToPrevious}
             onNavigateSignup={handleNavigateSignup}
             onSuccess={handleReturnToPrevious}
           />
-        )}
-        {activeView === 'signup' && (
+        ) : activeView === 'signup' ? (
           <SignupPage
             onBack={handleReturnToPrevious}
             onNavigateLogin={handleNavigateLogin}
             onSuccess={handleReturnToPrevious}
           />
+        ) : (
+          /* Main Application with Left Sidebar & Full-Width Content */
+          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+            {/* Left Sidebar (Desktop) */}
+            <Sidebar
+              activeView={activeView}
+              onNavigateDiagnose={() => handleNavigateDiagnose()}
+              onNavigateCropRecommendation={handleOpenCropRecommendation}
+              onNavigateSustainability={handleOpenSustainability}
+              onNavigateModelInfo={() => handleNavigateDiagnose('#model-info')}
+              onNavigateHowItWorks={() => handleNavigateDiagnose('#how-it-works')}
+              className="hidden md:flex"
+            />
+
+            {/* Main Content Area */}
+            <div className="flex-1 min-w-0 flex flex-col">
+              {activeView === 'diagnose' && (
+                <DiagnosePage
+                  onOpenCropRecommendation={handleOpenCropRecommendation}
+                  onOpenSustainabilityScore={handleOpenSustainability}
+                />
+              )}
+
+              {activeView === 'crop-recommendation' && (
+                <CropRecommendationPage
+                  onBack={() => handleNavigateDiagnose()}
+                  onNavigateSustainability={handleOpenSustainability}
+                />
+              )}
+
+              {activeView === 'sustainability' && (
+                <SustainabilityScorePage
+                  onBack={() => handleNavigateDiagnose()}
+                  onNavigateCropRecommendation={handleOpenCropRecommendation}
+                />
+              )}
+            </div>
+          </div>
         )}
       </ErrorBoundary>
       <Footer />
@@ -182,11 +261,10 @@ function AppShell() {
   );
 }
 
-export default function App() {
+export default function App({ initialView }: AppShellProps = {}) {
   return (
     <AuthProvider>
-      <AppShell />
+      <AppShell initialView={initialView} />
     </AuthProvider>
   );
 }
-

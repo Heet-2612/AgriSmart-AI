@@ -36,7 +36,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('renders Sign Up (primary), Login (secondary), and Model Info in the Header without Supported Crops link', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // Model Info link is now active in navigation
     const modelInfoLinks = screen.queryAllByRole('link', { name: /model info/i });
@@ -57,7 +57,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('ensures diagnosis workbench is completely accessible to guest without login walls', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // No modal is open initially
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('ensures crop recommendation feature is fully accessible as a guest without redirect', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // Click "Get Recommendations" from bonus features
     const getRecsBtn = screen.getByRole('button', { name: /try crop recommendation — get recommendations/i });
@@ -85,7 +85,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('navigates to dedicated Login view when Login is clicked and returns to app on Continue as Guest', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     const loginButton = screen.getByRole('button', { name: /^login$/i });
     fireEvent.click(loginButton);
@@ -108,7 +108,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('navigates to dedicated Sign Up view when Sign Up is clicked and allows switching to Login', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     const signUpButton = screen.getByRole('button', { name: /^sign up$/i });
     fireEvent.click(signUpButton);
@@ -124,7 +124,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('preserves and returns to previous relevant page (crop recommendation) after skipping auth', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // Go to Crop Recommendation
     const getRecsBtn = screen.getByRole('button', { name: /try crop recommendation — get recommendations/i });
@@ -221,7 +221,7 @@ describe('Optional Authentication Foundation — Phase 1', () => {
   });
 
   it('preserves initial workbench view across multi-step auth page navigation and guest return', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // 1. Navigate to Crop Recommendation
     const cropNavButtons = screen.getAllByRole('button', { name: /crop recommendation/i });

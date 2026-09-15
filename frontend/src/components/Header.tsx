@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Leaf, Menu, X } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AgriSmartLogo } from './AgriSmartLogo';
 
 interface HeaderProps {
-  activeView?: 'home' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
+  activeView?: 'landing' | 'home' | 'diagnose' | 'crop-recommendation' | 'sustainability' | 'login' | 'signup';
   onNavigateHome?: () => void;
+  onNavigateDiagnose?: () => void;
   onNavigateCropRecommendation?: () => void;
   onNavigateSustainability?: () => void;
+  onNavigateModelInfo?: () => void;
+  onNavigateHowItWorks?: () => void;
   onNavigateLogin?: () => void;
   onNavigateSignup?: () => void;
   onOpenAuth?: () => void;
@@ -15,29 +19,53 @@ interface HeaderProps {
 export function Header({
   activeView = 'home',
   onNavigateHome,
+  onNavigateDiagnose,
   onNavigateCropRecommendation,
   onNavigateSustainability: _onNavigateSustainability,
+  onNavigateModelInfo,
+  onNavigateHowItWorks,
   onNavigateLogin,
   onNavigateSignup,
   onOpenAuth,
 }: HeaderProps = {}) {
   const { status, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileFarmInsightOpen, setMobileFarmInsightOpen] = useState(true);
 
-  const handleLinkClick = (e?: React.MouseEvent, hash?: string) => {
-    if (e) {
-      e.preventDefault();
-    }
-    if (activeView !== 'home' && onNavigateHome) {
+  const handleBrandClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateHome) {
       onNavigateHome();
-      if (hash) {
-        setTimeout(() => {
-          const el = document.querySelector(hash);
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
-    } else if (hash) {
-      const el = document.querySelector(hash);
+    } else if (onNavigateDiagnose) {
+      onNavigateDiagnose();
+    }
+  };
+
+  const handleHomeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateDiagnose) {
+      onNavigateDiagnose();
+    } else if (onNavigateHome) {
+      onNavigateHome();
+    }
+  };
+
+  const handleModelInfoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateModelInfo) {
+      onNavigateModelInfo();
+    } else {
+      const el = document.querySelector('#model-info');
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleHowItWorksClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateHowItWorks) {
+      onNavigateHowItWorks();
+    } else {
+      const el = document.querySelector('#how-it-works');
       el?.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -61,96 +89,40 @@ export function Header({
   return (
     <header
       role="banner"
-      className="sticky top-0 z-50 border-b border-[#D4ECDC] bg-[#E8F8F0]/95 backdrop-blur-md shadow-2xs"
+      className="sticky top-0 z-50 border-b border-[#E5E0D0] bg-[#FAF7EE]/95 backdrop-blur-md shadow-2xs"
     >
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="flex h-18 items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 sm:h-20 items-center justify-between gap-4">
 
-          {/* Wordmark & Brand Logo */}
+          {/* Left Side: Logo & AgriSmart AI Branding */}
           <a
             href="#diagnose"
             aria-label="AgriSmart AI — home"
-            onClick={(e) => {
-              if (activeView !== 'home' && onNavigateHome) {
-                e.preventDefault();
-                onNavigateHome();
-              }
-            }}
-            className="flex items-center gap-2.5 no-underline hover:no-underline focus-visible:rounded-lg"
+            onClick={handleBrandClick}
+            className="flex items-center gap-2.5 no-underline hover:no-underline focus-visible:rounded-lg shrink-0 min-w-0"
           >
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform hover:scale-105"
-              style={{ backgroundColor: '#10B981' }}
+            <div
+              className="flex h-9 w-9 max-h-9 max-w-9 items-center justify-center rounded-xl bg-[#E8F3EC] p-1 transition-transform hover:scale-105 shadow-2xs shrink-0 overflow-hidden"
               aria-hidden="true"
             >
-              <Leaf size={20} strokeWidth={2.4} color="#FFFFFF" className="animate-leaf-sway" />
-            </span>
-            <span className="text-xl font-bold tracking-tight text-[#0F172A]">
-              AgriSmart <span style={{ color: '#10B981' }}>AI</span>
+              <AgriSmartLogo variant="navbar" size={32} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-[#163824] shrink-0 whitespace-nowrap">
+              AgriSmart <span className="font-serif italic font-normal text-[#2D6A4F]">AI</span>
             </span>
           </a>
 
-          {/* Desktop Navigation */}
-          <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-2">
-            <a
-              href="#diagnose"
-              onClick={(e) => {
-                if (activeView !== 'home' && onNavigateHome) {
-                  e.preventDefault();
-                  onNavigateHome();
-                }
-              }}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors no-underline ${
-                activeView === 'home'
-                  ? 'bg-[#D7F3E3] text-[#047857]'
-                  : 'text-[#475569] hover:bg-[#D7F3E3] hover:text-[#047857]'
-              }`}
-            >
-              Home
-            </a>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigateCropRecommendation?.();
-              }}
-              aria-label="Farm Insight — Crop Recommendation"
-              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
-                activeView === 'crop-recommendation' || activeView === 'sustainability'
-                  ? 'bg-[#D7F3E3] text-[#047857]'
-                  : 'text-[#475569] hover:bg-[#D7F3E3] hover:text-[#047857]'
-              }`}
-            >
-              Farm Insight
-            </button>
-            <a
-              href="#model-info"
-              onClick={(e) => handleLinkClick(e, '#model-info')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#D7F3E3] hover:text-[#047857] no-underline"
-            >
-              Model Info
-            </a>
-            <a
-              href="#how-it-works"
-              onClick={(e) => handleLinkClick(e, '#how-it-works')}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-[#475569] transition-colors hover:bg-[#D7F3E3] hover:text-[#047857] no-underline"
-            >
-              How It Works
-            </a>
-          </nav>
-
-          {/* Top-Right Side: Sign Up (primary), Login (secondary) */}
-          <div className="hidden md:flex items-center gap-3">
-
+          {/* Right Side: Auth / User actions + Mobile toggle */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {status === 'authenticated' && user ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700">
+                <span className="text-xs font-semibold text-[#163824]">
                   {user.name || user.email || 'Account'}
                 </span>
                 <button
                   type="button"
                   onClick={logout}
-                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer transition-colors"
+                  className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 cursor-pointer transition-colors"
                   aria-label="Sign Out"
                 >
                   Sign Out
@@ -162,17 +134,17 @@ export function Header({
                 <button
                   type="button"
                   onClick={handleLoginClick}
-                  className="rounded-full border border-emerald-600 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-700 transition-colors cursor-pointer"
+                  className="rounded-full border border-[#2D5A3D]/40 bg-white px-3.5 sm:px-4 py-1.5 text-xs font-semibold text-[#1E4D35] hover:bg-[#F0F7F2] hover:border-[#2D5A3D] transition-colors cursor-pointer"
                   aria-label="Login"
                 >
                   Login
                 </button>
 
-                {/* Primary / Default Action: Sign Up */}
+                {/* Primary Action: Sign Up */}
                 <button
                   type="button"
                   onClick={handleSignupClick}
-                  className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                  className="rounded-full bg-emerald-600 px-3.5 sm:px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
                   aria-label="Sign Up"
                 >
                   Sign Up
@@ -180,33 +152,18 @@ export function Header({
               </div>
             )}
 
-            <a
-              href="#diagnose"
-              aria-label="Diagnose Leaf"
-              onClick={(e) => {
-                if (activeView !== 'home' && onNavigateHome) {
-                  e.preventDefault();
-                  onNavigateHome();
-                }
-              }}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-all hover:opacity-90 hover:scale-105 shadow-xs"
-              style={{ backgroundColor: '#059669', color: '#FFFFFF' }}
-            >
-              <Leaf size={18} strokeWidth={2.2} />
-            </a>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              aria-expanded={mobileMenuOpen}
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
+            {/* Mobile Menu Hamburger Button */}
+            <div className="flex md:hidden ml-1">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="rounded-xl p-2 text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 cursor-pointer"
+                aria-expanded={mobileMenuOpen}
+                aria-label="Toggle navigation menu"
+              >
+                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+            </div>
           </div>
 
         </div>
@@ -215,43 +172,88 @@ export function Header({
         {mobileMenuOpen && (
           <nav
             aria-label="Mobile navigation"
-            className="md:hidden border-t border-slate-100 py-3 space-y-1"
+            className="md:hidden border-t border-[#E5E0D0] py-3 space-y-1"
           >
             <a
               href="#diagnose"
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                if (activeView !== 'home' && onNavigateHome) {
-                  e.preventDefault();
-                  onNavigateHome();
-                }
+                handleHomeClick(e);
               }}
-              className={`block rounded-lg px-3 py-2 text-base font-medium transition-colors ${
-                activeView === 'home' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
+              className={`block rounded-xl px-3.5 py-2.5 text-base font-medium transition-colors ${
+                activeView === 'home' || activeView === 'diagnose' || activeView === 'landing'
+                  ? 'text-[#1E4D35] bg-[#E4EFE7] font-semibold'
+                  : 'text-slate-700 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
               }`}
             >
               Home
             </a>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onNavigateCropRecommendation?.();
-              }}
-              aria-label="Farm Insight — Crop Recommendation"
-              className={`block w-full text-left rounded-lg px-3 py-2 text-base font-medium cursor-pointer transition-colors ${
-                activeView === 'crop-recommendation' || activeView === 'sustainability' ? 'text-[#059669] bg-[#ECFDF5]' : 'text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669]'
-              }`}
-            >
-              Farm Insight
-            </button>
+            {/* Mobile Farm Insight Expandable */}
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setMobileFarmInsightOpen(!mobileFarmInsightOpen)}
+                aria-expanded={mobileFarmInsightOpen}
+                aria-label="Farm Insight"
+                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-base font-medium cursor-pointer transition-colors ${
+                  activeView === 'crop-recommendation' || activeView === 'sustainability'
+                    ? 'text-[#1E4D35] bg-[#E4EFE7] font-semibold'
+                    : 'text-slate-700 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                }`}
+              >
+                <span>Farm Insight</span>
+                <ChevronDown
+                  size={18}
+                  className={`text-slate-500 transition-transform duration-200 ${
+                    mobileFarmInsightOpen ? 'rotate-180 text-[#1E4D35]' : ''
+                  }`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {mobileFarmInsightOpen && (
+                <div className="pl-4 pr-1 space-y-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigateCropRecommendation?.();
+                    }}
+                    aria-label="Farm Insight — Crop Recommendation"
+                    className={`block w-full text-left rounded-xl px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                      activeView === 'crop-recommendation'
+                        ? 'bg-[#234E37] text-white font-bold'
+                        : 'text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                    }`}
+                  >
+                    Crop Recommendation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      _onNavigateSustainability?.();
+                    }}
+                    aria-label="Farm Insight — Sustainability Score"
+                    className={`block w-full text-left rounded-xl px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                      activeView === 'sustainability'
+                        ? 'bg-[#234E37] text-white font-bold'
+                        : 'text-slate-600 hover:bg-[#EAE5D4] hover:text-[#1E4D35]'
+                    }`}
+                  >
+                    Sustainability Score
+                  </button>
+                </div>
+              )}
+            </div>
+
             <a
               href="#model-info"
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleLinkClick(e, '#model-info');
+                handleModelInfoClick(e);
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#D7F3E3] hover:text-[#047857] transition-colors"
+              className="block rounded-xl px-3.5 py-2.5 text-base font-medium text-slate-700 hover:bg-[#EAE5D4] hover:text-[#1E4D35] transition-colors"
             >
               Model Info
             </a>
@@ -259,62 +261,17 @@ export function Header({
               href="#how-it-works"
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleLinkClick(e, '#how-it-works');
+                handleHowItWorksClick(e);
               }}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-[#ECFDF5] hover:text-[#059669] transition-colors"
+              className="block rounded-xl px-3.5 py-2.5 text-base font-medium text-slate-700 hover:bg-[#EAE5D4] hover:text-[#1E4D35] transition-colors"
             >
               How It Works
             </a>
-
-            {/* Mobile Auth Entry Point */}
-            <div className="pt-2 border-t border-slate-100 mt-2">
-              {status === 'authenticated' && user ? (
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm font-medium text-slate-700">
-                    {user.name || user.email || 'Account'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      logout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="text-xs font-semibold text-slate-600 hover:text-slate-900"
-                    aria-label="Sign Out"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2 px-3 py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleSignupClick();
-                    }}
-                    className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
-                    aria-label="Sign Up"
-                  >
-                    Sign Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleLoginClick();
-                    }}
-                    className="flex w-full items-center justify-center rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer"
-                    aria-label="Login"
-                  >
-                    Login
-                  </button>
-                </div>
-              )}
-            </div>
           </nav>
         )}
       </div>
     </header>
   );
 }
+
+export default Header;

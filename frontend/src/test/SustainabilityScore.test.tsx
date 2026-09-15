@@ -331,7 +331,7 @@ describe('Sustainability Score Feature & Workflows', () => {
   });
 
   it('switches between Crop Recommendation and Sustainability Score within App navigation', async () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // Click Farm Insight from header
     const farmInsightBtn = screen.getByRole('button', { name: /farm insight — crop recommendation/i });

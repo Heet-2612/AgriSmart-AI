@@ -28,18 +28,9 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 /** Supported crop options */
 const CROP_OPTIONS = [
   'Apple',
-  'Bell Pepper',
-  'Cherry',
   'Corn (Maize)',
-  'Cotton',
-  'Grape',
-  'Peach',
   'Potato',
-  'Rice',
-  'Soybean',
-  'Strawberry',
   'Tomato',
-  'Wheat',
 ];
 
 interface StepItem {
@@ -91,11 +82,11 @@ const HOW_IT_WORKS_STEPS: StepItem[] = [
   },
 ];
 
-/** Stylized wheat and corn stalk watermark illustration matching reference design */
+/** Stylized wheat and corn stalk watermark illustration */
 function CropWatermark() {
   return (
     <div
-      className="pointer-events-none absolute bottom-0 left-0 right-0 h-44 sm:h-52 overflow-hidden select-none flex justify-center items-end opacity-40 z-0"
+      className="pointer-events-none absolute bottom-0 left-0 right-0 h-44 sm:h-52 overflow-hidden select-none flex justify-center items-end opacity-35 z-0"
       aria-hidden="true"
     >
       <svg
@@ -205,6 +196,7 @@ export function DiagnosePage({
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const consoleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -213,6 +205,10 @@ export function DiagnosePage({
       }
     };
   }, [previewUrl]);
+
+  const handleScrollToDiagnose = () => {
+    consoleRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const validateFile = (file: File): { isValid: boolean; error?: string } => {
     if (!file) {
@@ -351,27 +347,37 @@ export function DiagnosePage({
   };
 
   return (
-    <main id="diagnose" aria-label="Plant disease diagnosis" className="flex-1 relative bg-mesh-agri overflow-hidden">
-
-      {/* ── Hero & Diagnosis Console ── */}
-      <section className="relative pt-12 pb-16 sm:pt-16 sm:pb-20">
-        {/* Wheat and Corn vector watermark silhouette matching reference screenshot */}
+    <main
+      id="diagnose"
+      aria-label="Plant disease diagnosis"
+      className="flex-1 relative bg-mesh-agri overflow-hidden"
+    >
+      {/* ── Diagnosis Workbench & Output Console ── */}
+      <section
+        id="diagnose-console"
+        ref={consoleRef}
+        className="relative pt-10 pb-16 sm:pt-14 sm:pb-20 scroll-mt-20"
+      >
+        {/* Wheat and Corn vector watermark silhouette */}
         <CropWatermark />
 
-        <div className="relative z-10 mx-auto w-full max-w-2xl px-4 sm:px-6 flex flex-col items-center text-center">
-
-          {/* Main Hero Heading */}
-          <h1
-            aria-label="AgriSmart AI — Plant Disease Diagnosis"
-            className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-3 text-center leading-tight"
-          >
-            AgriSmart <span className="text-emerald-600">AI</span>
-          </h1>
-
-          {/* Subtitle / Description */}
-          <p className="text-center text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-md sm:max-w-lg mb-8 sm:mb-10">
-            Upload a crop or leaf image to detect disease and get AI-powered insights.
-          </p>
+        <div
+          className={`relative z-10 mx-auto w-full px-4 sm:px-6 transition-all duration-300 ${
+            predictionResult ? 'max-w-6xl sm:max-w-7xl' : 'max-w-3xl flex flex-col items-center text-center'
+          }`}
+        >
+          {/* Section Header (avoiding duplicate huge branding name) */}
+          <div className="mb-6 text-center">
+            <h1
+              aria-label="AgriSmart AI — Plant Disease Diagnosis"
+              className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-[#163824] mb-2 leading-tight"
+            >
+              Plant Disease Diagnosis
+            </h1>
+            <p className="text-center text-sm sm:text-base text-slate-600 font-normal leading-relaxed max-w-lg mx-auto">
+              Upload a crop or leaf image to detect disease and get AI-powered insights.
+            </p>
+          </div>
 
           {/* Hidden File Input for Keyboard/Screen-reader accessibility */}
           <input
@@ -385,9 +391,13 @@ export function DiagnosePage({
             disabled={isPredicting}
           />
 
-          {/* ── Upload & Diagnosis Card ── */}
+          {/* ── Upload & Diagnosis Card (or Full-Screen Result View) ── */}
           <div
-            className="w-full rounded-3xl border border-[#E5DEC9] bg-white p-6 sm:p-8 shadow-[0_12px_35px_rgba(20,40,25,0.06)] transition-all text-left"
+            className={`w-full transition-all text-left ${
+              predictionResult
+                ? 'p-0'
+                : 'rounded-3xl border border-[#E5DEC9] bg-white p-6 sm:p-8 shadow-[0_12px_35px_rgba(20,40,25,0.06)]'
+            }`}
             role="region"
             aria-label="Diagnosis workbench"
           >
@@ -421,7 +431,7 @@ export function DiagnosePage({
               </div>
             )}
 
-            {/* State A: Diagnosis Result Display */}
+            {/* State A: Diagnosis Result Display (Full-Width Dashboard) */}
             {predictionResult ? (
               <DiagnosisResult
                 result={predictionResult}
@@ -462,23 +472,23 @@ export function DiagnosePage({
                 >
                   {/* Upload Icon */}
                   <div
-                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-emerald-600 bg-emerald-100/80 transition-transform group-hover:scale-105"
+                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-[#1E4D35] bg-emerald-100/80 transition-transform group-hover:scale-105 shadow-2xs"
                     aria-hidden="true"
                   >
                     <Upload size={28} strokeWidth={2.2} />
                   </div>
 
-                  <h3 className="mb-1 text-lg font-bold text-slate-900">
+                  <h3 className="mb-1 text-lg font-bold text-slate-900 text-center">
                     Upload Leaf Image
                   </h3>
                   <p className="sr-only">Upload a crop or leaf image</p>
                   <p className="sr-only">Use a clear photo of the affected leaf or crop for better diagnosis.</p>
                   
-                  <p className="mb-2 text-sm text-slate-500">
-                    Drag & drop or <span className="font-semibold text-emerald-600 group-hover:underline">browse</span>
+                  <p className="mb-2 text-sm text-slate-500 text-center">
+                    Drag & drop or <span className="font-semibold text-emerald-700 group-hover:underline">browse</span>
                   </p>
 
-                  <p className="text-xs font-medium text-slate-400">
+                  <p className="text-xs font-medium text-slate-400 text-center">
                     Supports JPG, JPEG, PNG, WebP (up to 10 MB)
                   </p>
 
@@ -504,7 +514,7 @@ export function DiagnosePage({
                       Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-700">
                         <Leaf size={16} />
                       </div>
                       <select
@@ -530,7 +540,7 @@ export function DiagnosePage({
                       type="button"
                       variant="primary"
                       onClick={handleChangeImageClick}
-                      className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                      className="w-full sm:w-auto py-3 px-6 text-sm font-bold rounded-full bg-[#234E37] hover:bg-[#1A3C2A] text-white shadow-xs"
                       aria-label="Diagnose crop"
                     >
                       <Sparkles size={16} aria-hidden="true" />
@@ -545,7 +555,7 @@ export function DiagnosePage({
               <div className="space-y-6 text-left">
 
                 {/* Preview Frame */}
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 p-2 sm:p-3">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-[#FAF7EE] p-2 sm:p-3">
                   <img
                     src={previewUrl!}
                     alt="Selected crop leaf preview"
@@ -554,7 +564,7 @@ export function DiagnosePage({
                 </div>
 
                 {/* File Details & Action Buttons */}
-                <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-[#FAF7EE] p-3.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-800" title={selectedFile.name}>
                       {selectedFile.name}
@@ -571,7 +581,7 @@ export function DiagnosePage({
                       onClick={handleChangeImageClick}
                       disabled={isPredicting}
                       aria-label="Change selected image"
-                      className="px-3.5 py-2 text-xs rounded-lg font-medium"
+                      className="px-3.5 py-2 text-xs rounded-xl font-medium"
                     >
                       <RefreshCw size={14} aria-hidden="true" />
                       Change
@@ -582,7 +592,7 @@ export function DiagnosePage({
                       onClick={handleRemove}
                       disabled={isPredicting}
                       aria-label="Remove selected image"
-                      className="px-3.5 py-2 text-xs rounded-lg font-medium"
+                      className="px-3.5 py-2 text-xs rounded-xl font-medium"
                     >
                       <Trash2 size={14} aria-hidden="true" />
                       Remove
@@ -600,7 +610,7 @@ export function DiagnosePage({
                       Crop Type <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-700">
                         <Leaf size={16} />
                       </div>
                       <select
@@ -629,7 +639,7 @@ export function DiagnosePage({
                         onClick={handlePredict}
                         disabled={!selectedFile || isPredicting}
                         aria-label="Predict disease"
-                        className="w-full sm:w-auto py-2.5 px-6 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                        className="w-full sm:w-auto py-3 px-7 text-sm font-bold rounded-full bg-[#234E37] hover:bg-[#1A3C2A] text-white shadow-xs"
                       >
                         <Sparkles size={16} aria-hidden="true" />
                         <span>Diagnose Crop</span>
@@ -644,13 +654,13 @@ export function DiagnosePage({
                   <div
                     role="status"
                     aria-live="polite"
-                    className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 text-center shadow-xs"
+                    className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-5 text-center shadow-xs"
                   >
-                    <div className="flex items-center justify-center gap-2.5 text-emerald-800">
-                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" aria-hidden="true" />
-                      <span className="font-semibold text-sm">Analyzing your crop image...</span>
+                    <div className="flex items-center justify-center gap-2.5 text-emerald-900">
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-700" aria-hidden="true" />
+                      <span className="font-bold text-sm">Analyzing your crop image...</span>
                     </div>
-                    <p className="mt-1 text-xs text-emerald-700">
+                    <p className="mt-1 text-xs text-emerald-800">
                       Processing visual foliage patterns and evaluating model availability.
                     </p>
                   </div>
@@ -664,14 +674,14 @@ export function DiagnosePage({
         </div>
       </section>
 
-      {/* ── How It Works (Matching Reference Design) ── */}
+      {/* ── 3. How It Works ── */}
       <section
         id="how-it-works"
         className="py-10 sm:py-14"
         aria-label="How it works"
       >
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          {/* Top 4 Colored Leaf Badges Row (Matching reference screenshot) */}
+          {/* Top 4 Colored Leaf Badges Row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-4">
             {HOW_IT_WORKS_STEPS.map((step) => {
               const IconComponent = step.icon;
@@ -737,13 +747,13 @@ export function DiagnosePage({
         </div>
       </section>
 
-      {/* ── Bonus Features Section (Crop Recommendation & Sustainability Score) ── */}
+      {/* ── 4. Bonus Features Section (Crop Recommendation & Sustainability Score) ── */}
       <BonusFeaturesSection
         onSelectCropRecommendation={onOpenCropRecommendation}
         onSelectSustainabilityScore={onOpenSustainabilityScore}
       />
 
-      {/* ── Model Info Section (Comprehensive AI & Agronomic Architecture) ── */}
+      {/* ── 5. Model Info Section (Updated to exactly 4 Crop Types & 10 Disease Classes) ── */}
       <section
         id="model-info"
         className="py-12 sm:py-16 scroll-mt-20"
@@ -756,17 +766,17 @@ export function DiagnosePage({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100">
               <div className="flex items-center gap-3.5">
                 <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-2xs"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F3EC] text-[#1E4D35] shadow-2xs"
                   aria-hidden="true"
                 >
                   <Cpu size={26} strokeWidth={2.2} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A]">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#163824]">
                       Model Architecture & Intelligence
                     </h2>
-                    <span className="rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+                    <span className="rounded-full bg-[#E8F3EC] px-3 py-0.5 text-xs font-bold text-[#1E4D35] border border-emerald-200">
                       SigLIP ViT + MobileNet
                     </span>
                   </div>
@@ -778,40 +788,44 @@ export function DiagnosePage({
 
               <a
                 href="#diagnose"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer w-fit"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleScrollToDiagnose();
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-900 hover:underline cursor-pointer w-fit"
               >
                 <span>Diagnose a Crop</span>
                 <ArrowRight size={13} />
               </a>
             </div>
 
-            {/* 3 Columns of Deep Specifications */}
+            {/* 3 Pillars of Deep Specifications */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* Pillar 1 */}
-              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
-                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+              <div className="rounded-2xl border border-slate-200/80 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-[#1E4D35] font-bold text-sm">
                   <Layers size={16} />
-                  <span>38 Pathology Classes</span>
+                  <span>10 Pathology Classes</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Trained on 87,000+ curated leaf images across 14 crop families, classifying bacterial spots, powdery mildew, late blight, rust, mosaic viruses, and healthy foliage.
+                  Trained on curated high-resolution leaf imagery across 4 core crop types (Apple, Corn, Potato, Tomato), classifying 10 distinct pathology and healthy foliage states.
                 </p>
               </div>
 
               {/* Pillar 2 */}
-              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
-                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+              <div className="rounded-2xl border border-slate-200/80 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-[#1E4D35] font-bold text-sm">
                   <ShieldCheck size={16} />
                   <span>Dual-Tier Safety & Fallback</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Calibrated probability distributions automatically detect ambiguous or blurry imagery, with an offline deterministic heuristic backup ensuring rural uptime.
+                  Calibrated probability distributions automatically detect ambiguous imagery, with an offline deterministic heuristic backup ensuring rural field uptime.
                 </p>
               </div>
 
               {/* Pillar 3 */}
-              <div className="rounded-2xl border border-slate-100 bg-[#FAF7EE]/60 p-5">
-                <div className="flex items-center gap-2 mb-2 text-emerald-700 font-bold text-sm">
+              <div className="rounded-2xl border border-slate-200/80 bg-[#FAF7EE]/60 p-5">
+                <div className="flex items-center gap-2 mb-2 text-[#1E4D35] font-bold text-sm">
                   <CheckCircle2 size={16} />
                   <span>Grounded Action Guides</span>
                 </div>
@@ -821,23 +835,31 @@ export function DiagnosePage({
               </div>
             </div>
 
-            {/* Metric Counters Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-center">
-              <div>
-                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">38</span>
-                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Disease Classes</span>
+            {/* Metric Counters Strip - Showing exactly Crop types: 4 and Disease Classes: 10 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-[#F4FAF6] border border-emerald-200/80 text-center">
+              <div className="p-2">
+                <span className="block text-2xl sm:text-3xl font-black text-[#163824]">4</span>
+                <span className="text-xs font-bold text-[#2D5A3D] uppercase tracking-wider mt-1 block">
+                  Crop types
+                </span>
               </div>
-              <div>
-                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">14</span>
-                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Crop Types</span>
+              <div className="p-2">
+                <span className="block text-2xl sm:text-3xl font-black text-[#163824]">10</span>
+                <span className="text-xs font-bold text-[#2D5A3D] uppercase tracking-wider mt-1 block">
+                  Disease Classes
+                </span>
               </div>
-              <div>
-                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">&lt; 450ms</span>
-                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Inference Speed</span>
+              <div className="p-2">
+                <span className="block text-2xl sm:text-3xl font-black text-[#163824]">&lt; 450ms</span>
+                <span className="text-xs font-bold text-[#2D5A3D] uppercase tracking-wider mt-1 block">
+                  Inference Speed
+                </span>
               </div>
-              <div>
-                <span className="block text-lg sm:text-xl font-extrabold text-emerald-900">100%</span>
-                <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Offline Fallback</span>
+              <div className="p-2">
+                <span className="block text-2xl sm:text-3xl font-black text-[#163824]">100%</span>
+                <span className="text-xs font-bold text-[#2D5A3D] uppercase tracking-wider mt-1 block">
+                  Offline Fallback
+                </span>
               </div>
             </div>
 
@@ -848,4 +870,3 @@ export function DiagnosePage({
     </main>
   );
 }
-

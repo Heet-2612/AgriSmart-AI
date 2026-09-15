@@ -301,9 +301,9 @@ export function SustainabilityScorePage({
     <main
       id="sustainability-score"
       aria-label="Farm Sustainability Score"
-      className="flex-1 relative bg-mesh-agri overflow-hidden py-10 sm:py-16"
+      className="flex-1 relative bg-mesh-agri overflow-hidden py-8 sm:py-12"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6" ref={formTopRef}>
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8" ref={formTopRef}>
         {/* Top Back Action & Farm Insights Sub-Nav */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <Button
@@ -628,7 +628,7 @@ export function SustainabilityScorePage({
                   <label
                     className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                       formData.action === 'irrigate_now'
-                        ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20'
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
                         : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50'
                     }`}
                   >
@@ -638,7 +638,7 @@ export function SustainabilityScorePage({
                       value="irrigate_now"
                       checked={formData.action === 'irrigate_now'}
                       onChange={() => setFormData((prev) => ({ ...prev, action: 'irrigate_now' }))}
-                      className="mt-1 text-blue-600 focus:ring-blue-500"
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
                     />
                     <div>
                       <span className="text-sm font-bold text-slate-900 block">Irrigate Immediately</span>
@@ -651,19 +651,19 @@ export function SustainabilityScorePage({
               </div>
 
               {/* Simulated IoT Field Sensor Preset */}
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+              <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
-                    <Cpu size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                    <Cpu size={16} className="text-emerald-700" />
+                    <span className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
                       Simulated IoT Sensor Layer (Hackathon Prototyping)
                     </span>
                   </div>
-                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
                     Deterministic Telemetry
                   </span>
                 </div>
-                <p className="text-xs text-blue-900/80 leading-relaxed mb-3">
+                <p className="text-xs text-emerald-900/80 leading-relaxed mb-3">
                   Select a root-zone moisture sensor preset or input capacitive moisture percentage directly:
                 </p>
 
@@ -675,13 +675,13 @@ export function SustainabilityScorePage({
                       onClick={() => handlePresetSelect(p.id)}
                       className={`text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer ${
                         formData.selected_preset === p.id
-                          ? 'border-blue-500 bg-white shadow-xs font-bold text-blue-950'
-                          : 'border-blue-200/60 bg-white/70 text-slate-700 hover:bg-white'
+                          ? 'border-emerald-600 bg-white shadow-xs font-bold text-emerald-950'
+                          : 'border-emerald-200/60 bg-white/70 text-slate-700 hover:bg-white'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">{p.name}</span>
-                        <span className="text-[11px] text-blue-600 font-mono font-bold">{p.moisture}% VWC</span>
+                        <span className="text-[11px] text-emerald-700 font-mono font-bold">{p.moisture}% VWC</span>
                       </div>
                       <p className="text-[11px] text-slate-500 font-normal mt-0.5 leading-snug">{p.desc}</p>
                     </button>
@@ -914,11 +914,11 @@ export function SustainabilityScorePage({
             {/* Water Impact & What-If Comparison Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Water Volume Impact Card */}
-              <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/60 to-white p-5">
+              <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Droplets size={18} className="text-blue-600" />
-                    <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                    <Droplets size={18} className="text-emerald-700" />
+                    <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
                       Water Volume Impact
                     </h4>
                   </div>
@@ -940,10 +940,10 @@ export function SustainabilityScorePage({
                 </div>
 
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-3xl font-black text-blue-950">
+                  <span className="text-3xl font-black text-emerald-950">
                     {result.water_impact.litres.toLocaleString()}
                   </span>
-                  <span className="text-xs font-bold text-blue-700">Litres</span>
+                  <span className="text-xs font-bold text-emerald-700">Litres</span>
                 </div>
 
                 <p className="text-xs font-semibold text-slate-800 mb-1">
