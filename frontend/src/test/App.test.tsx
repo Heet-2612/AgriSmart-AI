@@ -19,10 +19,20 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the application shell with branding, header, and footer', () => {
+  it('renders exactly one intro landing screen on open and navigates to diagnosis on Get Started', () => {
     render(<App />);
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /where agriculture meets ai/i, level: 1 })
+    ).toBeInTheDocument();
+    
+    // Click Get Started button
+    const getStartedBtn = screen.getByRole('button', { name: /get started with agrismart ai/i });
+    expect(getStartedBtn).toBeInTheDocument();
+    fireEvent.click(getStartedBtn);
+
+    // Navigates directly to main diagnosis page with navbar
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.getByLabelText(/agrismart ai — home/i)).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /plant disease diagnosis/i, level: 1 })
     ).toBeInTheDocument();
@@ -32,7 +42,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('renders empty initial upload state with clear farmer-friendly instructions', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     expect(screen.getByText('Upload a crop or leaf image')).toBeInTheDocument();
     expect(
       screen.getByText(/use a clear photo of the affected leaf or crop for better diagnosis/i)
@@ -49,7 +59,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('accepts a valid image file and displays image preview, filename, and action controls', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['fake-image-bytes'], 'leaf_healthy.jpg', { type: 'image/jpeg' });
@@ -63,7 +73,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('rejects unsupported non-image file with a friendly validation error', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const invalidFile = new File(['document content'], 'notes.pdf', { type: 'application/pdf' });
@@ -78,7 +88,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('rejects oversized files exceeding 10 MB with clear feedback', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const largeFile = new File(['x'.repeat(100)], 'huge_photo.jpg', { type: 'image/jpeg' });
@@ -92,7 +102,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('resets form to initial empty state when Remove button is clicked', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'tomato_leaf.png', { type: 'image/png' });
@@ -110,7 +120,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('supports selecting an optional crop type', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'corn_leaf.jpg', { type: 'image/jpeg' });
@@ -127,7 +137,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
     // Return pending promise to inspect in-flight loading state
     vi.mocked(client.predictDisease).mockReturnValue(new Promise(() => {}));
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'potato_blight.jpg', { type: 'image/jpeg' });
@@ -158,7 +168,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   });
 
   it('supports drag-and-drop file upload', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const dropzone = screen.getByLabelText(/click or drag and drop to select a crop leaf image/i);
 
     // Drag over activates highlighted state
@@ -191,7 +201,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
     };
     vi.mocked(client.predictDisease).mockResolvedValue(mockResponse);
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-bytes'], 'tomato_diseased.jpg', { type: 'image/jpeg' });
@@ -228,7 +238,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
       new ApiError(503, 'Model checkpoint not yet available')
     );
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'rice_leaf.png', { type: 'image/png' });
@@ -255,7 +265,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
       new ApiError(400, 'Invalid image dimensions or corrupt leaf photo.')
     );
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'bad_photo.jpg', { type: 'image/jpeg' });
@@ -293,7 +303,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
       new ApiError(500, 'Internal Server Error: Traceback (most recent call last) in torch.cuda...')
     );
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'failing_leaf.jpg', { type: 'image/jpeg' });
@@ -319,7 +329,7 @@ describe('AgriSmart AI — Task 2 & Disease API Integration Workflow', () => {
   it('displays user-friendly retryable error on network failure (offline/disconnect)', async () => {
     vi.mocked(client.predictDisease).mockRejectedValue(new TypeError('Failed to fetch'));
 
-    render(<App />);
+    render(<App initialView="diagnose" />);
     const fileInput = screen.getByLabelText(/upload crop or leaf image/i) as HTMLInputElement;
 
     const testFile = new File(['leaf-data'], 'network_leaf.jpg', { type: 'image/jpeg' });

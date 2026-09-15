@@ -64,6 +64,20 @@ def test_register_duplicate_user():
     mock_db.rollback.assert_called_once()
 
 
+def test_register_internal_server_error():
+    payload = {"email": "test@gmail.com", "password": "SecurePassword123!"}
+    
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.commit.side_effect = RuntimeError("Database connection lost")
+    app.dependency_overrides[get_db_session] = lambda: mock_db
+    
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 500
+    assert response.json()["detail"] == "An error occurred during registration."
+    mock_db.rollback.assert_called_once()
+
+
 def test_login_valid_credentials():
     payload = {"email": "Test@example.com", "password": "correctpassword"}
     

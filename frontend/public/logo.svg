@@ -1,0 +1,20 @@
+<svg viewBox="0 0 100 125" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Leaf Contour -->
+  <path d="M50 10 C68 30 85 54 85 82 C85 98 73 110 58 112" stroke="#2D5A3D" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M50 10 C32 30 15 54 15 82 C15 98 27 110 42 112" stroke="#2D5A3D" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Center Vertical Circuit Track -->
+  <line x1="50" y1="36" x2="50" y2="102" stroke="#2D5A3D" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="50" cy="32" r="5.5" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="4.5"/>
+  <circle cx="50" cy="112" r="4.5" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="3.5"/>
+  
+  <!-- Left Circuit Track -->
+  <path d="M38 100 L38 74 L28 60" stroke="#2D5A3D" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="26" cy="55" r="5.5" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="4.5"/>
+  <circle cx="38" cy="107" r="4" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="3.5"/>
+  
+  <!-- Right Circuit Track -->
+  <path d="M62 100 L62 74 L72 60" stroke="#2D5A3D" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="74" cy="55" r="5.5" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="4.5"/>
+  <circle cx="62" cy="107" r="4" fill="#FAF7EE" stroke="#2D5A3D" stroke-width="3.5"/>
+</svg>

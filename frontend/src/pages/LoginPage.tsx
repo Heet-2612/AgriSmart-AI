@@ -40,7 +40,7 @@ export function LoginPage({ onBack, onNavigateSignup, onSuccess }: LoginPageProp
 
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-mesh-agri">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
         {/* Back / Return Link */}
         <div className="mb-4">
