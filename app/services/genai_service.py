@@ -1,9 +1,19 @@
+import logging
 import json
 from datetime import datetime, timezone
-import logging
-from google import genai
-from google.genai import types as genai_types
-from google.genai.errors import APIError as GeminiAPIError
+
+logger = logging.getLogger(__name__)
+
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    from google.genai.errors import APIError as GeminiAPIError
+except ImportError:  # pragma: no cover
+    genai = None
+    genai_types = None
+    GeminiAPIError = Exception
+    logger.warning("Google generative AI package not installed; chat functionality disabled.")
+
 from groq import Groq
 from groq import APIError as GroqAPIError, APIConnectionError as GroqAPIConnectionError, RateLimitError as GroqRateLimitError, InternalServerError as GroqInternalServerError
 from app.config import settings
@@ -19,13 +29,27 @@ _groq_client = None
 def get_gemini_client():
     global _gemini_client
     if _gemini_client is None and settings.GEMINI_API_KEY:
-        _gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        if genai is not None:
+            try:
+                _gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            except Exception as e:
+                logger.warning("Failed to initialize Gemini client: %s", e)
+                _gemini_client = None
+        else:
+            logger.debug("Google generative AI package is not installed; skipping Gemini client.")
     return _gemini_client
 
 def get_groq_client():
     global _groq_client
     if _groq_client is None and settings.GROQ_API_KEY:
-        _groq_client = Groq(api_key=settings.GROQ_API_KEY)
+        if Groq is not None:
+            try:
+                _groq_client = Groq(api_key=settings.GROQ_API_KEY)
+            except Exception as e:
+                logger.warning("Failed to initialize Groq client: %s", e)
+                _groq_client = None
+        else:
+            logger.debug("Groq package is not installed; skipping Groq client.")
     return _groq_client
 
 def _build_grounding_context(context: ChatContext) -> str:
@@ -154,11 +178,14 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
         except GeminiAPIError as e:
             code = getattr(e, 'code', None)
             if code in (429, 500, 502, 503, 504):
-                logger.warning(f"Gemini generation transient failure (code={code}), falling back to Groq: {e}")
+                logger.warning("Gemini generation transient failure (code=%s), falling back to Groq: %s", code, e)
                 gemini_failed = True
             else:
-                logger.error(f"Gemini generation fatal error (code={code}): {e}")
+                logger.error("Gemini generation fatal error (code=%s): %s", code, e)
                 raise # Bubble up fatal/auth errors
+        except Exception as e:
+            logger.warning("Gemini unexpected generation error: %s, falling back to Groq", e)
+            gemini_failed = True
     else:
         gemini_failed = True
             
@@ -174,7 +201,7 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
             response = groq.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=messages,
-                max_tokens=1024,
+                max_tokens=900,
                 temperature=0.3
             )
             
@@ -191,12 +218,14 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
                 raise ChatProviderUnavailableError("Empty response from providers")
                 
         except (GroqInternalServerError, GroqAPIConnectionError, GroqRateLimitError) as e:
-            logger.error(f"Groq transient generation failed: {e}")
+            logger.warning("Groq transient generation failed: %s", e)
             raise ChatProviderUnavailableError() from e
         except GroqAPIError as e:
-            # E.g. authentication errors bubble up
-            logger.error(f"Groq generation fatal error: {e}")
-            raise
+            logger.warning("Groq generation API error: %s", e)
+            raise ChatProviderUnavailableError() from e
+        except Exception as e:
+            logger.warning("Groq unexpected error: %s", e)
+            raise ChatProviderUnavailableError() from e
             
     # Both failed or unavailable
-    raise ChatProviderUnavailableError()
+    raise ChatProviderUnavailableError("All configured GenAI chat providers are unavailable.")

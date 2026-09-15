@@ -20,13 +20,13 @@
   --color-amber-dark:    #D97706;
   --color-amber-light:   #FEF3C7;
 
-  --color-bg:            #F8FAFC;
+  --color-bg:            #FAF7EE;
   --color-card-bg:       #FFFFFF;
 
   /* Neutral scale (slate) */
-  --color-slate-50:  #F8FAFC;
-  --color-slate-100: #F1F5F9;
-  --color-slate-200: #E2E8F0;
+  --color-slate-50:  #FAF7EE;
+  --color-slate-100: #F3EFE3;
+  --color-slate-200: #E5E0D0;
   --color-slate-300: #CBD5E1;
   --color-slate-400: #94A3B8;
   --color-slate-500: #64748B;
@@ -66,11 +66,76 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Background atmospheric gradient resembling reference */
+/* Background atmospheric gradient matching reference warm ivory tone */
 .bg-mesh-agri {
-  background: 
-    radial-gradient(ellipse at 50% 0%, rgba(16, 185, 129, 0.04) 0%, transparent 60%),
-    #F8FAFC;
+  background-color: #FAF7EE;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 65%),
+    radial-gradient(circle at 100% 100%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
+}
+
+/* ============================================================
+   AgriSmart AI Logo Constrained Sizing & Transform Animation
+   ============================================================ */
+
+.navbar-logo-img {
+  width: 36px;
+  height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.intro-logo-img {
+  width: 56px;
+  height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.footer-logo-img {
+  width: 28px;
+  height: 28px;
+  max-width: 28px;
+  max-height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-logo-float {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  will-change: transform;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-float,
+  .navbar-logo-img,
+  .intro-logo-img,
+  .footer-logo-img,
+  .animate-leaf-sway {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* ============================================================

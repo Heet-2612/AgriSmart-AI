@@ -510,9 +510,9 @@ export function CropRecommendationPage({
     <main
       id="crop-recommendation"
       aria-label="Crop Recommendation"
-      className="flex-1 relative bg-mesh-agri overflow-hidden py-10 sm:py-16"
+      className="flex-1 relative bg-mesh-agri overflow-hidden py-8 sm:py-12"
     >
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 
         {/* Top Back Action & Farm Insights Sub-Nav */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

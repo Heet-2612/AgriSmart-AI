@@ -50,7 +50,7 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
   });
 
   it('renders the Bonus Features section on the home screen below How It Works', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     const howItWorksSection = screen.getByRole('region', { name: /how it works/i });
     expect(howItWorksSection).toBeInTheDocument();
@@ -85,11 +85,10 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     ).not.toBeInTheDocument();
   });
 
-  it('renders the "Ready to Use" badge for both feature cards', () => {
+  it('renders both feature cards active without coming soon badges', () => {
     render(<BonusFeaturesSection onSelectCropRecommendation={vi.fn()} />);
 
-    const readyLabels = screen.getAllByText(/ready to use/i);
-    expect(readyLabels).toHaveLength(2);
+    expect(screen.queryByText(/ready to use/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/feature in development/i)).not.toBeInTheDocument();
   });
@@ -124,7 +123,7 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
   });
 
   it('navigates from Home to Crop Recommendation form when clicking Try Crop Recommendation', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     expect(
       screen.getByRole('heading', { name: /plant disease diagnosis/i, level: 1 })
@@ -142,7 +141,7 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
   });
 
   it('navigates back to the Plant Diagnosis view when clicking Back to Plant Diagnosis', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     const tryBtn = screen.getByRole('button', { name: /try crop recommendation/i });
     fireEvent.click(tryBtn);
@@ -156,7 +155,7 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
   });
 
   it('navigates from Home to Sustainability Score form when clicking Open Sustainability Score', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     const sustainBtn = screen.getByRole('button', { name: /open sustainability score/i });
     fireEvent.click(sustainBtn);
@@ -166,8 +165,8 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     ).toBeInTheDocument();
   });
 
-  it('navigates back to the Plant Diagnosis view when clicking the Header logo from Crop Recommendation', () => {
-    render(<App />);
+  it('navigates back to the Landing view when clicking the Header logo from Crop Recommendation', () => {
+    render(<App initialView="diagnose" />);
 
     const tryBtn = screen.getByRole('button', { name: /try crop recommendation/i });
     fireEvent.click(tryBtn);
@@ -176,7 +175,7 @@ describe('Crop Recommendation Bonus Feature — Step 2 Layout and Navigation', (
     fireEvent.click(brandHomeLink);
 
     expect(
-      screen.getByRole('heading', { name: /plant disease diagnosis/i, level: 1 })
+      screen.getByRole('heading', { name: /where agriculture meets ai/i, level: 1 })
     ).toBeInTheDocument();
   });
 });
@@ -909,7 +908,7 @@ describe('Crop Recommendation — Incremental Completion Flow', () => {
   });
 
   it('navigates directly to crop recommendation from the header navigation as a guest', () => {
-    render(<App />);
+    render(<App initialView="diagnose" />);
 
     // Click Crop Recommendation button in desktop header nav
     const cropNavButtons = screen.getAllByRole('button', { name: /crop recommendation/i });
