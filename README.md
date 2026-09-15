@@ -1,129 +1,350 @@
-# AgriSmart AI
-
-AgriSmart AI is a comprehensive, intelligent agricultural platform designed for Smart India Hackathon 2026. It leverages computer vision, predictive weather intelligence, and generative AI to deliver robust crop disease diagnosis, localized agronomic interventions, and interactive farmer assistance, ultimately driving resilient farming practices.
-
-## Problem Statement
-
-Crop diseases and unpredictable weather patterns cause significant agricultural losses, especially in rural regions where manual diagnosis and expert agronomic advice are slow or unavailable. Farmers lack immediate, data-driven interventions tailored to their exact location and specific crop conditions, resulting in over-spraying, wasted irrigation, and diminished yields.
-
-## Solution
-
-AgriSmart AI bridges the gap between expert agronomy and rural farming by providing an offline-capable, scalable diagnostic ecosystem. By fusing deep learning-based foliar disease detection with hyper-local weather intelligence and a robust GenAI fallback chain, the platform offers farmers real-time, actionable insights for irrigation, spraying, and crop management.
-
-## Key Features
-
-- **Instant Disease Diagnosis:** Rapid identification of crop diseases using a multi-stage PyTorch-based computer vision pipeline.
-- **Hyper-local Weather Intelligence:** Actionable agronomic rules based on Open-Meteo forecasts and India Meteorological Department (IMD) climatological normals (1981–2010), supplemented by simulated deterministic IoT telemetry.
-- **Resilient Farmer Assistant:** Context-aware generative AI with an automated provider fallback mechanism.
-- **Actionable Agronomy:** Automated recommendations for irrigation and chemical applications.
-- **Modular Monolith Backend:** Fast, scalable API built on FastAPI and PostgreSQL.
-
-## System Architecture
-
-The platform is built as a robust modular monolith:
-1. **Frontend:** React SPA built with Vite and TypeScript, featuring modular, independent components for weather, diagnostics, and AI assistance (UI layout is functionally driven and actively being iterated for optimal user experience).
-2. **Backend:** FastAPI handling strict request validation, routing, and error reporting, supported by PostgreSQL for persistent logging.
-3. **AI Integration:** 
-   - Local PyTorch inference interface for disease detection.
-   - External API integrations (Open-Meteo, Google Gemini, Groq) orchestrated with fault-tolerant service layers.
-
-## Disease Diagnosis Pipeline (E14/E12/E11)
-
-The disease diagnosis pipeline utilizes a multi-stage PyTorch inference architecture designed for edge and cloud deployment. To ensure diagnostic safety, the pipeline follows a strict gating sequence:
-- **E14 Leaf Gate:** A presence gate that evaluates whether the image contains foliage or degenerate/background elements. E14 achieved a verified **94.83%** overall accuracy on the locked audit set.
-- **E12 Validity Gate:** A SigLIP-based classifier that verifies if the crop is a supported species (e.g., Potato, Tomato, Corn, Apple). E12 achieved a verified **98.62%** validation accuracy and an **88.89%** accuracy on supported leaves in the locked audit.
-- **E11 Disease Predictor:** The final stage performing 10-class crop-disease image classification. The architecture uses a frozen SigLIP ViT-B/16 (`vit_base_patch16_siglip_224`) backbone with a 768→10 linear classification head.
-  - **Production Checkpoint:** `model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt`
-  - **SHA-256:** `a51d814fc434c514743180a9df596d6a5aa6d250e7b3e496dd5927fdea6c64df`
-  - **Supported Classes (10):** Potato Early Blight, Potato Late Blight, Potato Healthy, Corn Gray Leaf Spot, Corn Healthy, Tomato Yellow Leaf Curl Virus, Tomato Healthy, Apple Scab, Apple Cedar Rust, Apple Healthy.
-
-### E11 Evaluation Metrics
-- **PUBLIC Held-Out Field-Condition Test Set (1,708 images):**
-  - **Macro-F1:** 95.07%
-  - **Accuracy:** 96.31%
-- **PlantVillage Validation Set:**
-  - **Macro-F1:** 98.96%
-
-## Weather Intelligence
-
-The Weather Intelligence module provides localized, deterministic agronomic guidance. Using the Open-Meteo API and historical IMD climatological normals (1981–2010), along with simulated deterministic IoT telemetry, the system analyzes location-specific weather conditions (such as precipitation probability, wind speed, and soil moisture). It applies precise, rule-based logic to issue actionable directives like recommending optimal irrigation and spraying windows. Rather than attempting to diagnose diseases from weather, it strictly identifies "raised disease risk — monitor" to prompt visual inspection by the farmer.
-
-## Crop Recommendation
-
-The platform architecture includes a dedicated module to process soil and environmental parameters, delivering data-driven crop recommendations. This ensures farmers are advised on the most viable crops based on their specific geographical and climatological profiles.
-
-## Sustainability Score
-
-AgriSmart AI evaluates farming practices against sustainable agronomic baselines. By analyzing resource utilization (e.g., water usage, targeted spraying), the system calculates a sustainability score, encouraging ecological farming and reducing chemical runoff.
-
-## Farmer Assistant
-
-The Farmer Assistant is an interactive, conversational AI tailored for agricultural queries. It is powered by a highly resilient generative AI failover architecture:
-- **Primary Provider:** Google Gemini utilizing the exact model `gemini-3.1-flash-lite` for high-speed, accurate agronomic reasoning.
-- **Fallback Provider:** Groq utilizing the exact model `qwen/qwen3.8-27b`, ensuring uninterrupted service during transient primary API failures.
-This dual-provider strategy guarantees high availability for critical farmer support.
-
-## Tech Stack
-
-- **Frontend:** Node.js 22.x, React 19.x, TypeScript 5.x, Vite 6.2.x, Tailwind CSS 4.x
-- **Backend:** Python 3.12.x, FastAPI 0.116.x, Pydantic 2.11.x, SQLAlchemy 2.0.x, PostgreSQL 17.x
-- **AI / ML:** PyTorch 2.7.x, torchvision 0.22.x, scikit-learn 1.9.x, google-genai, groq
-- **Testing:** pytest 8.x, Vitest 3.x
-
-## Setup
-
-### Local Environment
-1. Clone the repository and checkout the feature branch:
-   ```bash
-   git clone <repo-url>
-   cd AgriSmartAi
-   git checkout feat/weather-intelligence-genai
-   ```
-2. Configure environment variables (do not commit secrets):
-   ```bash
-   cp .env.example .env
-   ```
-3. Initialize the backend:
-   ```bash
-   python -m venv .venv
-   source .venv/Scripts/activate  # Windows
-   pip install -r requirements.txt
-   ```
-4. Start the backend server:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-5. Initialize the frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-### Docker
-```bash
-docker-compose up --build -d
+AgriSmart AI 🌾
+> **Intelligent Agriculture for a Sustainable Future**
+AgriSmart AI is an intelligent agricultural diagnostic and decision-support platform that combines computer vision, weather intelligence, agronomic recommendations, sustainability analytics, simulated IoT telemetry, and conversational AI to help farmers make faster and more informed decisions.
+Team: WebShooters  
+Institution: LJ Institute of Engineering and Technology
+🎥 Demo
+Watch the AgriSmart AI Demo
+---
+🌱 The Problem
+Farmers can lose yield because crop diseases are diagnosed late, agricultural advice is generic, and irrigation and input usage are not sufficiently adapted to local conditions.
+AgriSmart AI brings multiple decision-support capabilities into one platform:
+Detect crop diseases from leaf images.
+Reject unsuitable images and unsupported crops before disease prediction.
+Combine local weather forecasts with practical farm alerts.
+Recommend crops using soil and climate parameters.
+Estimate sustainability using resource-efficiency indicators.
+Accept simulated IoT telemetry.
+Provide conversational assistance through an AI Agronomist.
+---
+🚀 Key Features
+Feature	Status	Description
+🩺 Disease Detection	✅ Implemented	Multi-stage AI diagnosis from crop-leaf images
+🌦️ Weather Intelligence	✅ Implemented	Live weather, 7-day forecast and agronomic alerts
+🌱 Crop Recommendation	✅ Implemented	Recommendations from N-P-K, soil pH, rainfall and temperature
+♻️ Sustainability Score	✅ Implemented	0–100 resource-efficiency score with breakdown
+📡 IoT Telemetry	✅ Implemented	Simulated farm sensor ingestion
+🤖 AI Agronomist	✅ Implemented	Multi-turn conversational agricultural assistance
+🧠 Agentic Advisor	🟡 Partial	Deterministic advisory rules implemented; autonomous multi-agent chaining remains future scope
+🔐 Authentication	✅ Implemented	JWT-based registration and login
+---
+🧠 AI Disease Detection
+The disease-detection system uses a three-stage gated pipeline rather than sending every uploaded image directly to a disease classifier.
+```text
+Uploaded Image
+      ↓
+Basic Image Checks
+      ↓
+E14 Leaf Presence Gate
+      ↓
+E12 Crop Validity Gate
+      ↓
+E11 Disease Predictor
+      ↓
+Confidence / Margin Decision
+      ↓
+Farmer-Friendly Diagnosis & Advice
 ```
+E14 — Leaf Presence Gate
+A lightweight deterministic computer-vision gate checks whether an uploaded image plausibly contains leaf/vegetation content. It helps reject non-leaf images, soil/background scenes and degenerate inputs before ML classification.
+E12 — Crop Validity Gate
+A SigLIP-based validity classifier determines whether the image belongs to a supported crop or should be treated as `Other`.
+E11 — Disease Predictor
+The production disease model uses:
+Backbone: SigLIP ViT-B/16
+Architecture: frozen 768-dimensional encoder + trained 768→10 linear classification head
+Input: 224×224 RGB
+Inference: deterministic FP32 on CPU/CUDA
+Model version: `E11-SigLIP-HYBRID10-PRODUCTION`
+Production checkpoint:
+```text
+model/checkpoints/E11_SigLIP_HYBRID10_PRODUCTION.pt
+```
+SHA-256:
+```text
+a51d814fc434c514743180a9df596d6a5aa6d250e7b3e496dd5927fdea6c64df
+```
+Supported Disease Classes
+Potato — Early Blight
+Potato — Late Blight
+Potato — Healthy
+Corn — Gray Leaf Spot
+Corn — Healthy
+Tomato — Yellow Leaf Curl Virus
+Tomato — Healthy
+Apple — Scab
+Apple — Cedar Rust
+Apple — Healthy
+---
+📊 Model Evaluation
+The production E11 model uses a locked held-out field-condition test set for the primary result.
+Evaluation Protocol	Accuracy	Macro-F1	Role
+Held-out field-condition test	96.31%	95.07%	Primary result
+PlantVillage validation	99.51%	98.96%	Validation
+LOSO field-source diagnostic	64.72%	70.38%	Cross-source robustness diagnostic
+PlantDoc diagnostic	69.19%	~69.5%	Post-hoc external diagnostic
+Held-out field test size: 1,708 images.
+Important Evaluation Note
+These evaluation protocols answer different questions and should not be treated as interchangeable benchmarks.
+The 96.31% / 95.07% result is the primary locked held-out field-condition evaluation.
+LOSO measures generalization when entire field-data sources are held out during evaluation.
+PlantDoc is a post-hoc external diagnostic and is not part of the production training pool.
+PlantVillage validation is a curated validation set and is expected to be easier than real-field data.
+Macro-F1 is emphasized because it gives equal importance to each class rather than allowing larger classes to dominate the metric.
+Reproducibility
+Inference is configured for deterministic FP32 execution across CPU/CUDA environments, with explicit device selection and backend determinism controls.
+Evaluation Limitations
+Performance can decrease under domain shift between curated/lab imagery and other field datasets. Visually similar disease/healthy classes and visually similar diseases remain challenging. The system therefore uses input-validity and confidence safeguards rather than presenting every prediction as certain.
+---
+🌦️ Weather Intelligence
+AgriSmart AI combines weather forecasts with rule-based agricultural interpretation.
+The weather module provides:
+Current atmospheric conditions
+7-day forecast
+Location-based weather retrieval
+Spray-condition guidance
+Irrigation-related alerts
+Disease-risk windows
+Seasonal climate information
+Weather data is obtained through Open-Meteo services and does not require a weather API key.
+Important endpoints:
+`POST /api/weather-intelligence`
+`GET /api/weather`
+`GET /api/seasonal-climate`
+---
+🌱 Crop Recommendation
+Farmers can provide:
+Nitrogen (N)
+Phosphorus (P)
+Potassium (K)
+Soil pH
+Rainfall
+Temperature
+The recommendation engine ranks suitable crops based on the supplied conditions.
+Endpoint:
+```text
+POST /api/crop-recommendations
+```
+---
+♻️ Sustainability Score
+The sustainability module calculates a 0–100 sustainability score using resource-efficiency indicators.
+It provides:
+Overall score
+Sustainability grade
+Water-use considerations
+Chemical/input penalties
+Resource-efficiency breakdown
+The system also supports simulated IoT telemetry.
+Endpoints:
+```text
+POST /api/sustainability-score
+POST /api/sustainability/iot-telemetry
+```
+---
+🤖 AI Agronomist
+The conversational AI Agronomist provides contextual agricultural assistance through a multi-turn chat interface.
+Capabilities include:
+Multi-turn conversations
+Context-aware responses
+Diagnostic context hand-off
+Primary/fallback model routing
+Current integrations include Google Gemini as the primary LLM and Groq as a fallback.
+Endpoint:
+```text
+POST /api/chat
+```
+---
+🏗️ System Architecture
+```text
+┌──────────────────────────────────────────────────────────┐
+│                    React Frontend                        │
+│        React + TypeScript + Vite + Tailwind             │
+└──────────────────────────┬───────────────────────────────┘
+                           │ REST API
+                           ▼
+┌──────────────────────────────────────────────────────────┐
+│                    FastAPI Backend                       │
+│             Validation • Services • Auth                 │
+└───────────────┬──────────────────────┬───────────────────┘
+                │                      │
+                ▼                      ▼
+        ┌───────────────┐      ┌──────────────────┐
+        │  PostgreSQL   │      │     AI / ML      │
+        │ SQLAlchemy +  │      │  E14 → E12 → E11 │
+        │    Alembic    │      └──────────────────┘
+        └───────────────┘
+```
+---
+🛠️ Technology Stack
+Frontend
+React 19
+TypeScript
+Vite
+Tailwind CSS
+Lucide React
+TanStack Query
+Backend
+Python 3.12+
+FastAPI
+Pydantic
+Uvicorn
+SQLAlchemy 2
+AsyncPG
+Alembic
+Database
+PostgreSQL
+AI / ML
+PyTorch
+Torchvision
+timm
+Scikit-learn
+Albumentations
+SigLIP ViT-B/16
+Security
+JWT authentication
+bcrypt password hashing
+External Services
+Open-Meteo Geocoding / Forecast APIs
+Google Gemini API
+Groq API
+---
+🔌 Important API Endpoints
+Method	Endpoint	Purpose
+POST	`/api/predictions`	Crop-leaf disease diagnosis
+POST	`/api/weather-intelligence`	Weather + agricultural intelligence
+GET	`/api/weather`	Current weather/advisories
+GET	`/api/seasonal-climate`	Seasonal climate information
+POST	`/api/crop-recommendations`	Crop recommendation
+POST	`/api/sustainability-score`	Sustainability calculation
+POST	`/api/sustainability/iot-telemetry`	IoT telemetry ingestion
+POST	`/api/chat`	AI Agronomist
+POST	`/api/auth/register`	User registration
+POST	`/api/auth/login`	JWT login
+GET	`/health`	Application/model readiness
+---
+📁 Project Structure
+```text
+AgriSmart-AI/
+├── app/
+├── frontend/
+├── model/
+│   ├── checkpoints/
+│   └── inference/
+├── experiments/
+├── tests/
+├── requirements.txt
+├── LICENSE
+└── ...
+```
+---
+⚙️ Installation & Setup
+Prerequisites
+Node.js 20+
+npm
+Python 3.12+
+PostgreSQL 16+ or Docker
+Backend
+```bash
+python -m venv .venv
+```
+Windows
+```bash
+.venv\Scripts\activate
+```
+Linux/macOS
+```bash
+source .venv/bin/activate
+```
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+Start the API:
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The Vite development server communicates with the FastAPI backend through the configured `/api` proxy.
+---
+🔐 Environment Variables
+Required variable names include:
+```text
+DATABASE_URL
+JWT_SECRET_KEY
+ACCESS_TOKEN_EXPIRE_MINUTES
+ENVIRONMENT
 
-## Testing
+GEMINI_API_KEY
+GEMINI_MODEL
 
-The repository maintains strict test coverage ensuring system reliability:
-- **Backend:** Automated tests via `pytest` (202 tests passing), validating the FastAPI routes, pipeline architecture, and GenAI fallback logic.
-- **Frontend:** Automated component and unit tests via `vitest` (149 tests passing).
+GROQ_API_KEY
+GROQ_MODEL
 
-## Data Sources
+OPEN_METEO_GEOCODING_URL
+OPEN_METEO_FORECAST_URL
 
-- **Weather Data:** High-resolution meteorological data provided by the Open-Meteo API.
-- **Climate Data:** Historical district climatological profiles provided by India Meteorological Department (IMD) Normals (1981-2010).
-- **Agricultural Corpus:** Domain-specific context fed into the Farmer Assistant via Google Gemini and Groq models.
-- **Disease Dataset:** PlantVillage validation data and a public held-out field-condition test set.
-
-## Limitations
-
-- **Domain Gap & Robustness:** Visual diagnosis accuracy may vary when transitioning from controlled lab imagery to complex field conditions with shadows and background clutter. To ensure reliable performance, the system's robustness is rigorously evaluated against challenging, real-world field-condition test data.
-- **Sensor Variability:** Low-budget mobile camera sensors may introduce noise and motion blur, impacting inference confidence.
-- **Early Symptom Overlap:** Phenotypically similar lesions in early disease stages present a classification challenge.
-
-## Hackathon Positioning
-
-AgriSmart AI is positioned as a comprehensive, hackathon-ready agricultural decision-support platform with a modular backend and frontend. By demonstrating strict engineering practices—such as resilient API fallbacks, deterministic agronomic rule engines, rigorous pipeline gating, and comprehensive automated testing—the project provides a scalable foundation for modern agricultural interventions, strictly aligned with the goals of Smart India Hackathon 2026.
+MODEL_CHECKPOINT_PATH
+VALIDITY_CHECKPOINT_PATH
+```
+Never commit API keys, passwords, JWT secrets or other credentials.
+---
+🧪 Testing
+The repository includes tests covering important backend, model, safety and reproducibility behavior, including:
+Disease prediction API
+E14 leaf-presence safety gate
+E12 crop validity
+E11 inference
+Safety/rejection behavior
+Cross-device reproducibility
+Backend integration
+Weather intelligence
+---
+🛡️ Safety & Reliability
+AgriSmart AI is designed around a fail-safe diagnostic pipeline:
+Non-leaf/invalid imagery can be rejected before disease inference.
+Unsupported crops can be classified as `Other`.
+Low-confidence predictions can be marked inconclusive.
+The production disease model is isolated behind validation gates.
+CPU/CUDA inference uses explicit FP32 configuration.
+External conversational AI services are separate from the core disease-detection pipeline.
+The system is a decision-support tool and should not be treated as a substitute for professional agronomic diagnosis.
+---
+⚠️ Limitations
+Disease detection supports a defined set of crops/classes rather than all agricultural species.
+Visual symptoms outside supported leaf-disease categories may not be diagnosed.
+Domain shift between curated datasets and different real-world environments can reduce performance.
+Visually similar diseases/classes remain challenging.
+Weather intelligence depends on external weather-service availability.
+The Agentic Advisor currently uses deterministic advisory logic; fully autonomous multi-agent tool chaining remains future scope.
+IoT functionality currently supports simulated telemetry rather than requiring physical farm hardware.
+---
+🔭 Future Scope
+More crops and disease classes
+Improved real-field domain adaptation
+Regional-language agricultural assistance
+GPS-aware recommendations
+Crop-stress and yield prediction
+Crop-rotation intelligence
+Expanded IoT sensor integration
+Autonomous multi-agent agricultural planning
+More extensive field validation
+---
+📜 License & Attribution
+This project is released under the MIT License. See `LICENSE`.
+The project uses open-source technologies and third-party resources including:
+SigLIP / pretrained vision components
+PlantVillage and referenced agricultural datasets
+Open-Meteo weather services
+India Meteorological Department climatological information
+PyTorch, timm, FastAPI, React and other open-source libraries
+Third-party datasets, models and services remain subject to their respective licenses and terms. Specific dataset/model licenses should be checked against their original sources before redistribution.
+---
+👥 Team
+WebShooters
+LJ Institute of Engineering and Technology
+> Built for Smart India Hackathon 2026.
