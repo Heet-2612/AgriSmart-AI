@@ -177,8 +177,12 @@ def generate_chat_answer(context: ChatContext) -> ChatAnswer:
                 gemini_failed = True
         except GeminiAPIError as e:
             code = getattr(e, 'code', None)
-            logger.warning("Gemini generation failure (code=%s), falling back to Groq: %s", code, e)
-            gemini_failed = True
+            if code in (429, 500, 502, 503, 504):
+                logger.warning("Gemini generation transient failure (code=%s), falling back to Groq: %s", code, e)
+                gemini_failed = True
+            else:
+                logger.error("Gemini generation fatal error (code=%s): %s", code, e)
+                raise # Bubble up fatal/auth errors
         except Exception as e:
             logger.warning("Gemini unexpected generation error: %s, falling back to Groq", e)
             gemini_failed = True

@@ -133,5 +133,56 @@ export interface WeatherResponse {
   timestamp?: string;
 }
 
+export interface ForecastDay {
+  date: string;
+  temp_min: number;
+  temp_max: number;
+  precipitation_sum: number;
+  precipitation_probability: number;
+  weather_code: number;
+  condition: string;
+}
+
+export interface AgronomicAlert {
+  category: string;
+  severity: string;
+  action: string;
+  title: string;
+  message: string;
+  reason: string;
+  priority: number;
+}
+
+export interface PrimaryAction {
+  action: string;
+  badge_label: string;
+  headline: string;
+  detail: string;
+  severity: string;
+}
+
+export interface WeatherIntelligenceRequest {
+  location: string;
+  crop?: string;
+  soil_moisture_percent?: number;
+  soil_type?: string;
+  diagnosed_disease?: string;
+  irrigation_status?: string;
+  forecast_days?: number;
+}
+
+export interface WeatherIntelligenceResponse {
+  location: WeatherLocation;
+  current: WeatherCurrent;
+  forecast_daily: ForecastDay[];
+  primary_action: PrimaryAction;
+  alerts: AgronomicAlert[];
+  farm_context_applied: Record<string, unknown>;
+  farm_context_complete: boolean;
+  data_source: string;
+  timestamp?: string;
+}
+
 export * from './auth';
 export * from './sustainability';
+

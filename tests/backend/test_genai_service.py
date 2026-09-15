@@ -46,10 +46,11 @@ def test_gemini_successful_answer(mock_get_groq, mock_get_gemini, valid_context)
     assert answer.grounded is True
     assert answer.session_id == valid_context.session_id
     
-    # Verify kwargs contain system instruction
+    # Verify kwargs contain system instruction and target model
     call_args = mock_gemini.models.generate_content.call_args
     assert call_args is not None
     kwargs = call_args[1]
+    assert kwargs["model"] == "gemini-3.1-flash-lite"
     assert "config" in kwargs
     assert kwargs["config"].system_instruction is not None
     assert valid_context.question in str(kwargs["contents"])
@@ -74,6 +75,11 @@ def test_gemini_temporary_failure_groq_fallback(mock_get_groq, mock_get_gemini, 
     assert answer.answer == "This is a Groq answer."
     assert answer.source == "groq"
     assert answer.grounded is True
+    
+    # Verify Groq fallback was called with qwen/qwen3.8-27b
+    groq_call_args = mock_groq.chat.completions.create.call_args
+    assert groq_call_args is not None
+    assert groq_call_args[1]["model"] == "qwen/qwen3.8-27b"
 
 @patch("app.services.genai_service.get_gemini_client")
 @patch("app.services.genai_service.get_groq_client")
@@ -327,4 +333,43 @@ def test_schema_unsupported_language():
             language="fr" # Unsupported
         )
     assert "unsupported language code" in str(exc.value).lower()
+
+
+@patch("app.services.genai_service.get_gemini_client")
+@patch("app.services.genai_service.get_groq_client")
+def test_provider_hierarchy_and_model_configuration(mock_get_groq, mock_get_gemini, valid_context):
+    """Verify Gemini is tried first with gemini-3.1-flash-lite, and falls back to Groq with qwen/qwen3.8-27b on transient failure."""
+    from app.config import settings
+    assert settings.GEMINI_MODEL == "gemini-3.1-flash-lite"
+    assert settings.GROQ_MODEL == "qwen/qwen3.8-27b"
+
+    # 1. Successful Gemini call (Primary)
+    mock_gemini = MagicMock()
+    mock_gemini_res = MagicMock()
+    mock_gemini_res.text = "Primary Gemini Answer"
+    mock_gemini.models.generate_content.return_value = mock_gemini_res
+    mock_get_gemini.return_value = mock_gemini
+
+    mock_groq = MagicMock()
+    mock_get_groq.return_value = mock_groq
+
+    ans = generate_chat_answer(valid_context)
+    assert ans.source == "gemini"
+    assert ans.answer == "Primary Gemini Answer"
+    mock_gemini.models.generate_content.assert_called_once()
+    assert mock_gemini.models.generate_content.call_args[1]["model"] == "gemini-3.1-flash-lite"
+    mock_groq.chat.completions.create.assert_not_called()
+
+    # 2. Transient Gemini failure -> Fallback to Groq
+    mock_gemini.models.generate_content.side_effect = GeminiAPIError(503, {"error": "Transient 503"}, None)
+    mock_groq_res = MagicMock()
+    mock_groq_res.choices = [MagicMock(message=MagicMock(content="Fallback Groq Qwen Answer"))]
+    mock_groq.chat.completions.create.return_value = mock_groq_res
+
+    ans_fallback = generate_chat_answer(valid_context)
+    assert ans_fallback.source == "groq"
+    assert ans_fallback.answer == "Fallback Groq Qwen Answer"
+    mock_groq.chat.completions.create.assert_called_once()
+    assert mock_groq.chat.completions.create.call_args[1]["model"] == "qwen/qwen3.8-27b"
+
 
